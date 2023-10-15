@@ -1,6 +1,5 @@
 # Create your models here.
 from django.utils import timezone
-now = timezone.now()
 
 from django.db import models
 from django.contrib.auth.models import User
