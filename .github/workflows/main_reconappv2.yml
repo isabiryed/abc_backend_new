@@ -64,4 +64,4 @@ jobs:
         with:
           app-name: 'ReconAppV2'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_31E659CB503C43F38FC7BAB38400E616 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_B3B99D19141F4F0585970E7529CE3170 }}
