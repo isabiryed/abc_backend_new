@@ -19,8 +19,7 @@ SECRET_KEY = 'django-insecure-oams=!*h1x%s$l1rdzxl+-=!hmwx)1-%s$pcphbniw^gjj^nl$
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['reconapp.azurewebsites.net']
-
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
