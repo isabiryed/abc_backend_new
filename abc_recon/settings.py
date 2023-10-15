@@ -1,5 +1,10 @@
+import os
 from pathlib import Path
 from os import getenv
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -12,9 +17,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-oams=!*h1x%s$l1rdzxl+-=!hmwx)1-%s$pcphbniw^gjj^nl$'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['reconapp.azurewebsites.net']
 
 
 # Application definition
@@ -36,6 +41,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.whiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -69,29 +75,19 @@ WSGI_APPLICATION = 'abc_recon.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-""" DATABASES = {
-    
-     'default':{
-         'ENGINE':'django.db.backends.mysql',
-         'NAME':'abc_recon',
-         'USER':'root',
-         'PASSWORD':'mysql'
-     }
-} """
-
 DATABASES = {
     'default': {
-        'ENGINE': 'mssql',
-        'NAME': 'abc_recon',
-        'USER': 'sa',  
-        'PASSWORD': 'xminau28=',
-        'HOST': 'TECH247007',  
-        'PORT': '',  
-        'OPTIONS': {
-            'trusted_connection': 'yes',  
+        'ENGINE': os.getenv('ENGINE'),
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USERNAME'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_SERVER'),
+        'PORT': os.getenv('PORT', '1433'),     
+        "OPTIONS": {"driver": "ODBC Driver 17 for SQL Server", 
         },
-    }
-} 
+    },
+}
+
 
 
 # Password validation
@@ -168,7 +164,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field

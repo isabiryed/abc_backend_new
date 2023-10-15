@@ -1,0 +1,4 @@
+{
+    "appService.defaultWebAppToDeploy": "/subscriptions/5cb440c7-a29d-4a81-83f7-81e7f918d111/resourceGroups/RECONAPP/providers/Microsoft.Web/sites/RECONAPP",
+    "appService.deploySubpath": "."
+}

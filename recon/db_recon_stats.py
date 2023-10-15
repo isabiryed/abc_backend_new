@@ -9,7 +9,7 @@ def insert_recon_stats(bankid,userid,reconciledRows, unreconciledRows, exception
                        requestedRows, UploadedRows, date_range_str, server, database, username, password):
     # Define the SQL query for insertion
     insert_query = f"""
-        INSERT INTO reconciliationLogs
+        INSERT INTO ReconLog
         (DATE_TIME,BANK_ID, USER_ID,RECON_RWS, UNRECON_RWS, EXCEP_RWS, FEEDBACK, RQ_RWS, UPLD_RWS, RQ_DATE_RANGE)
         VALUES
         ('{current_datetime}',{bankid},{userid},{reconciledRows}, {unreconciledRows}, {exceptionsRows}, '{feedback}', {requestedRows}, {UploadedRows}, '{date_range_str}')
@@ -39,7 +39,7 @@ def recon_stats_req( bank_id):
     # Define the SQL query for selection using an f-string to insert swift_code
     select_query = f"""
         SELECT RQ_RWS, RQ_DATE_RANGE, UPLD_RWS, EXCEP_RWS, RECON_RWS, UNRECON_RWS, FEEDBACK 
-        FROM reconciliationLogs WHERE BANK_ID = '{bank_id}'
+        FROM ReconLog WHERE BANK_ID = '{bank_id}'
     """
     
     # Execute the SQL query and retrieve the results

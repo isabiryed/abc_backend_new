@@ -27,12 +27,12 @@ def update_reconciliation(df, server, database, username, password, swift_code):
             logging.warning(f"Empty Trn Reference for {index}.")
             continue
 
-        select_query = f"SELECT * FROM reconciliation WHERE TRN_REF = '{trn_ref}'"
+        select_query = f"SELECT * FROM Recon WHERE TRN_REF = '{trn_ref}'"
         existing_data = execute_query(server, database, username, password, select_query, query_type="SELECT")
 
         # Update Query
         update_query = f"""
-            UPDATE reconciliation
+            UPDATE Recon
         SET
             ISS_FLG = CASE WHEN (ISS_FLG IS NULL OR ISS_FLG = 0 OR ISS_FLG != 1)  AND ISSUER_CODE = '{swift_code}' THEN 1 ELSE ISS_FLG END,
             ACQ_FLG = CASE WHEN (ACQ_FLG IS NULL OR ACQ_FLG = 0 OR ACQ_FLG != 1) AND ACQUIRER_CODE = '{swift_code}' THEN 1 ELSE ACQ_FLG END,
@@ -44,7 +44,7 @@ def update_reconciliation(df, server, database, username, password, swift_code):
         if existing_data.empty:
             # If not existing, insert and then update
             insert_query = f"""
-                INSERT INTO reconciliation 
+                INSERT INTO Recon 
                     (DATE_TIME, TRAN_DATE, TRN_REF, BATCH, ACQUIRER_CODE, ISSUER_CODE)
                 VALUES 
                     (GETDATE(),

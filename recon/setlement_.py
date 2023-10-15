@@ -1,12 +1,17 @@
+import os
+from dotenv import load_dotenv
 import pandas as pd
 import logging
 
 from .db_settle_recon import select_setle_file
 
-server = 'abcbusinessintelligence.database.windows.net'
-database = 'BusinessIntelligence'
-username = "isabiryed"
-password = "Vp85FRFXYf2KBr@"
+# Load the .env file
+load_dotenv()
+# Get the environment variables
+server = os.getenv('DB_SERVER')
+database = os.getenv('DB_NAME')
+username = os.getenv('DB_USERNAME')
+password = os.getenv('DB_PASSWORD')
 
 batch = 2349
 

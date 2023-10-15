@@ -1,9 +1,4 @@
-from django.db import models
-
 # Create your models here.
-
-from django.db import models
-
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -85,7 +80,6 @@ class Transactions(models.Model):
     class Meta:
         managed = False
         db_table = 'Transactions'
-
 
 def validate_file_extension(value):
     if(value.file.content_type not in ['application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']):

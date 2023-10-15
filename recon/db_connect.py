@@ -1,6 +1,7 @@
 import pyodbc
 import pandas as pd
 from dotenv import load_dotenv
+from os import getenv
 import os
 
 def execute_query(server_name, database_name, username, password, query, query_type="SELECT"):
@@ -35,8 +36,7 @@ def execute_query(server_name, database_name, username, password, query, query_t
             conn.close()
 
 if __name__ == "__main__":
-    # Example usage for SELECT query:
-    
+    # Example usage for SELECT query:    
 
     # Load the .env file
     load_dotenv()
