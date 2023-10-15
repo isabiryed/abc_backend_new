@@ -29,18 +29,20 @@ password = os.getenv('DB_PASSWORD')
 
 # Create your views here.
 
-def get_swift_code_from_request(request):
-    user = request.user
-    mapping = UserBankMapping.objects.filter(user=user)[0]
-    bank = mapping.bank
-    swift_code = bank.swift_code
-    return swift_code
+# def get_swift_code_from_request(request):
+#     user = request.user
+#     mapping = UserBankMapping.objects.filter(user=user)[0]
+#     bank = mapping.bank
+#     swift_code = bank.swift_code
+
+#     return swift_code
 
 def get_bank_code_from_request(request):
     user = request.user
     mapping = UserBankMapping.objects.filter(user=user)[0]
     bank = mapping.bank
-    bank_code = bank.bank_code
+    bank_code = bank.bank_code    
+    
     return bank_code
 
 class ReconciliationListView(generics.ListCreateAPIView):
@@ -115,7 +117,7 @@ class ReconcileView(APIView):
                 }
 
                 return Response(data, status=status.HTTP_200_OK)
-
+            
             except Exception as e:
                 # If there's an error during the process, ensure the temp file is removed
                 if os.path.exists(temp_file_path):

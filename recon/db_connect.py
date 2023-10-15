@@ -21,12 +21,16 @@ def execute_query(server_name, database_name, username, password, query, query_t
             df = pd.DataFrame.from_records(cursor.fetchall(), columns=[column[0] for column in cursor.description])
             # print(df)
             return df
-        elif query_type in ["UPDATE", "INSERT"]:
+        elif query_type == "UPDATE":
+            cursor.execute(query)      
+            conn.commit()  # Commit the changes to the database            
+            return None
+        elif query_type == "INSERT":
             cursor.execute(query)
             conn.commit()  # Commit the changes to the database
-            return None  # For update and Insert queries, return None
+            return None
         else:
-            raise ValueError("Invalid query type. Supported types are 'SELECT','UPDATE'and 'INSERT'.")
+            raise ValueError("Invalid query type. Supported types are 'SELECT', 'UPDATE', and 'INSERT'.")
 
     except Exception as e:
         print(f"Error: {str(e)}")
@@ -35,23 +39,23 @@ def execute_query(server_name, database_name, username, password, query, query_t
         if conn:
             conn.close()
 
-if __name__ == "__main__":
-    # Example usage for SELECT query:    
+# if __name__ == "__main__":
+#     # Example usage for SELECT query:    
 
-    # Load the .env file
-    load_dotenv()
+#     # Load the .env file
+#     load_dotenv()
 
-    # Get the environment variables
-    server = os.getenv('DB_SERVER')
-    database = os.getenv('DB_NAME')
-    username = os.getenv('DB_USERNAME')
-    password = os.getenv('DB_PASSWORD')
-    # Test the connection
-    test_query = "SELECT TOP 2 DATE_TIME, TRN_REF, TXN_TYPE FROM Transactions"  # A simple query to test the connection
-    result_df = execute_query(server, database, username, password, test_query)
+#     # Get the environment variables
+#     server = os.getenv('DB_SERVER')
+#     database = os.getenv('DB_NAME')
+#     username = os.getenv('DB_USERNAME')
+#     password = os.getenv('DB_PASSWORD')
+#     # Test the connection
+#     test_query = "SELECT TOP 2 DATE_TIME, TRN_REF, TXN_TYPE FROM Transactions"  # A simple query to test the connection
+#     result_df = execute_query(server, database, username, password, test_query)
 
-    if result_df is not None:
-        print("Connection successful.")
-        print(result_df)  # Print the result of the test query
-    else:
-        print("Connection failed.")
+#     if result_df is not None:
+#         print("Connection successful.")
+#         print(result_df)  # Print the result of the test query
+#     else:
+#         print("Connection failed.")

@@ -8,13 +8,15 @@ import pyodbc
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def update_reconciliation(df, server, database, username, password, swift_code):
-
     if df.empty:
         logging.warning("No Records to Update.")
         return "No records to update"
 
     update_count = 0
     insert_count = 0
+
+    insert_queries = []
+    update_queries = []
 
     for index, row in df.iterrows():
         date_time = row['DATE_TIME']
@@ -24,7 +26,7 @@ def update_reconciliation(df, server, database, username, password, swift_code):
         acquirer_code = row['ACQUIRER_CODE']
 
         if pd.isnull(trn_ref):
-            logging.warning(f"Empty Trn Reference for {index}.")
+            logging.warning(f"No TRN_REFS to run Update {index}.")
             continue
 
         select_query = f"SELECT * FROM Recon WHERE TRN_REF = '{trn_ref}'"
@@ -33,16 +35,16 @@ def update_reconciliation(df, server, database, username, password, swift_code):
         # Update Query
         update_query = f"""
             UPDATE Recon
-        SET
-            ISS_FLG = CASE WHEN (ISS_FLG IS NULL OR ISS_FLG = 0 OR ISS_FLG != 1)  AND ISSUER_CODE = '{swift_code}' THEN 1 ELSE ISS_FLG END,
-            ACQ_FLG = CASE WHEN (ACQ_FLG IS NULL OR ACQ_FLG = 0 OR ACQ_FLG != 1) AND ACQUIRER_CODE = '{swift_code}' THEN 1 ELSE ACQ_FLG END,
-            ISS_FLG_DATE = CASE WHEN (ISS_FLG IS NULL OR ISS_FLG = 0 OR ISS_FLG != 1) AND ISSUER_CODE = '{swift_code}' THEN GETDATE() ELSE ISS_FLG_DATE END,
-            ACQ_FLG_DATE = CASE WHEN (ACQ_FLG IS NULL OR ACQ_FLG = 0 OR ACQ_FLG != 1) AND ACQUIRER_CODE = '{swift_code}' THEN GETDATE() ELSE ACQ_FLG_DATE END
+            SET
+                ISS_FLG = CASE WHEN (ISS_FLG IS NULL OR ISS_FLG = 0 OR ISS_FLG != 1) AND ISSUER_CODE = '{swift_code}' THEN 1 ELSE ISS_FLG END,
+                ACQ_FLG = CASE WHEN (ACQ_FLG IS NULL OR ACQ_FLG = 0 OR ACQ_FLG != 1) AND ACQUIRER_CODE = '{swift_code}' THEN 1 ELSE ACQ_FLG END,
+                ISS_FLG_DATE = CASE WHEN (ISS_FLG IS NULL OR ISS_FLG = 0 OR ISS_FLG != 1) AND ISSUER_CODE = '{swift_code}' THEN GETDATE() ELSE ISS_FLG_DATE END,
+                ACQ_FLG_DATE = CASE WHEN (ACQ_FLG IS NULL OR ACQ_FLG = 0 OR ACQ_FLG != 1) AND ACQUIRER_CODE = '{swift_code}' THEN GETDATE() ELSE ACQ_FLG_DATE END
             WHERE TRN_REF = '{trn_ref}'                
         """
 
         if existing_data.empty:
-            # If not existing, insert and then update
+            # If not existing, add insert query to batch and update query to batch
             insert_query = f"""
                 INSERT INTO Recon 
                     (DATE_TIME, TRAN_DATE, TRN_REF, BATCH, ACQUIRER_CODE, ISSUER_CODE)
@@ -54,26 +56,22 @@ def update_reconciliation(df, server, database, username, password, swift_code):
                      '{acquirer_code}',
                      '{issuer_code}')
             """
-            try:
-                execute_query(server, database, username, password, insert_query, query_type="INSERT")
-                insert_count += 1
-                # Immediate update after insert
-                execute_query(server, database, username, password, update_query, query_type="UPDATE")
-                # update_count += 1
-            except pyodbc.Error as err:
-                logging.error(f"Error processing PK '{trn_ref}': {err}")
+            insert_queries.append(insert_query)
+            update_queries.append(update_query)
+            insert_count += 1
         else:
-            # If already existing, just update
-            try:
-                execute_query(server, database, username, password, update_query, query_type="UPDATE")
-                update_count += 1
-            except pyodbc.Error as err:
-                logging.error(f"Error updating PK '{trn_ref}': {err}")
+            # If already existing, add update query to batch
+            update_queries.append(update_query)
+            update_count += 1
 
-    if update_count == 0:
-        logging.info("No new records were updated.")
-    if insert_count == 0:
-        logging.info("No new records were inserted.")
+    # Execute insert and update queries in batches
+    if insert_queries:
+        batch_insert_query = "; ".join(insert_queries)
+        execute_query(server, database, username, password, batch_insert_query, query_type="INSERT")
+
+    if update_queries:
+        batch_update_query = "; ".join(update_queries)
+        execute_query(server, database, username, password, batch_update_query, query_type="UPDATE")
 
     feedback = f"Updated: {update_count}, Inserted: {insert_count}"
     logging.info(feedback)
