@@ -32,8 +32,7 @@ def insert_recon_stats(bankid,userid,reconciledRows, unreconciledRows, exception
     log.save()
     
     # Execute the SQL query
-    # execute_query(server, database, username, password, insert_query, query_type = "INSERT")
-
+    execute_query(server, database, username, password, insert_query, query_type = "INSERT")
 
 def recon_stats_req( bank_id):
     # Define the SQL query for selection using an f-string to insert swift_code

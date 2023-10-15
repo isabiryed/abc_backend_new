@@ -30,24 +30,34 @@ password = os.getenv('DB_PASSWORD')
 queryTst = "SELECT 1"
 connection_string = execute_query(server, database, username, password,queryTst)
 
-def update_exception_flag(df, server, database, username, password,swift_code):
+def update_exception_flag(df, server, database, username, password, swift_code):
 
+    # Check if DataFrame is empty
     if df.empty:
         logging.warning("No Exceptions Records to Update.")
+        return
+
+    # Check if 'TRN_REF' column exists in the DataFrame
+    if 'TRN_REF' not in df.columns:
+        logging.error("'TRN_REF' column is missing from the DataFrame.")
+        logging.error(f"Columns in DataFrame: {df.columns}")
         return
 
     update_count = 0
 
     for index, row in df.iterrows():
-        trn_ref = row['trn_ref']
+        # Safely retrieve 'TRN_REF' from the row
+        trn_ref = row.get('TRN_REF', None)
 
-        if pd.isnull(trn_ref):
-            logging.warning(f"Empty Exceptions Trn Reference for {index}.")
+        # Check if trn_ref is None or an empty string
+        if not trn_ref:
+            logging.warning(f"Empty or missing Exceptions Trn Reference for index {index}.")
+            logging.error(f"Row Data: {row}")
             continue
 
         # Update Query
         update_query = f"""
-            UPDATE reconciliation
+            UPDATE recon
         SET
             EXCEP_FLAG = CASE WHEN (EXCEP_FLAG IS NULL OR EXCEP_FLAG = 0 OR EXCEP_FLAG != 1)  
             AND (ISSUER_CODE = '{swift_code}' OR ACQUIRER_CODE = '{swift_code}')  
@@ -68,6 +78,7 @@ def update_exception_flag(df, server, database, username, password,swift_code):
     logging.info(exceptions_feedback)
 
     return exceptions_feedback
+
 
 
 def use_cols(df):

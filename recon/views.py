@@ -1,15 +1,8 @@
 from django.http import Http404
-from django.shortcuts import render
-
-from django.shortcuts import render
 from rest_framework import generics,viewsets
-from recon.db_exceptions import select_exceptions
-from recon.db_recon_stats import recon_stats_req
 from io import BytesIO
 from zipfile import ZipFile
 from django.http import FileResponse, Http404
-
-from recon.db_reversals import select_reversals
 from recon.mainFile import reconcileMain
 from recon.setle_sabs import setleSabs, unserializable_floats
 from recon.setlement_ import settle
@@ -20,6 +13,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import generics,status
 from .models import Bank,UserBankMapping,Transactions
+from rest_framework.permissions import IsAuthenticated
+
 from django.db.models import Q
 from dotenv import load_dotenv
 import os
@@ -87,17 +82,14 @@ class UploadedFilesViewset(viewsets.ModelViewSet):
 
 class ReconcileView(APIView):
     serializer_class = ReconcileSerializer
-    # permission_classes = [IsAuthenticated]
-
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         user = request.user
         if serializer.is_valid():
             uploaded_file = serializer.validated_data['file']
-            bank_code = get_bank_code_from_request(request)
-
-            
+            bank_code = get_bank_code_from_request(request)            
 
             # Save the uploaded file temporarily
             temp_file_path = "temp_file.xlsx"
@@ -134,7 +126,6 @@ class ReconcileView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-
 class ReversalsView(generics.ListAPIView):
     serializer_class = TransactionSerializer
     """
@@ -146,17 +137,15 @@ class ReversalsView(generics.ListAPIView):
         bank_code = get_bank_code_from_request(self.request)
         return Transactions.objects.filter(Q(request_type="1200")& (Q(issuer_code = bank_code)|Q(acquirer_code = bank_code))).exclude(amount="0").exclude(trn_status_0=None).exclude(trn_status_1=None)
         
-
-
         # The data returned by select_reversals is assumed to be in a suitable format for JSON serialization
 
         return Response(data, status=status.HTTP_200_OK)
+    
 class ExceptionsView(generics.ListAPIView):
     serializer_class = ReconciliationSerializer
     def get_queryset(self):
         bank_code = get_bank_code_from_request(self.request)
         return Recon.objects.filter(Q(issuer_code = bank_code)|Q(acquirer_code=bank_code)).exclude(excep_flag = None)
-    
     
 class ReconciledDataView(APIView):
     """
@@ -183,9 +172,6 @@ class UnReconciledDataView(APIView):
 
         if succunreconciled_data is not None:
             
-            # reconciled_data_cleaned = unserializable_floats(reconciled_data)
-            # data = reconciled_data_cleaned.to_dict(orient='records')
-
             unreconciled_data_cleaned = unserializable_floats(succunreconciled_data)
             data =  unreconciled_data_cleaned.to_dict(orient='records')
             return Response(data, status=status.HTTP_200_OK)
@@ -197,19 +183,6 @@ class ReconStatsView(generics.ListAPIView):
     def get_queryset(self):
         bank_code = get_bank_code_from_request(self.request)
         return ReconLog.objects.filter(bank_id=bank_code)
-    
-    """ def get(self, request):
-            
-            try:
-                # Assume recon_stats_req returns a list of dictionaries or None
-                data = recon_stats_req(bank_code)
-                if data is None:
-                    return Response({'error': 'No data found'}, status=status.HTTP_404_NOT_FOUND)              
-                
-                return Response(data, status=status.HTTP_200_OK)
-
-            except Exception as e:
-                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) """
 
 class sabsreconcile_csv_filesView(APIView):
 
@@ -247,15 +220,8 @@ class sabsreconcile_csv_filesView(APIView):
 
                 response = FileResponse(memory_file, content_type='application/zip')
                 response['Content-Disposition'] = 'attachment; filename=Settlement_.zip'
-                return response
+                return response            
             
-            # this one below doesnt return a zipped file. gets a decode error
-                # memory_file.seek(0)
-
-                # response = Response(memory_file, content_type='application/zip')
-                # response['Content-Disposition'] = 'attachment; filename=Settlement_recon_files.zip'
-                # return response
-
             except Exception as e:
                 # If there's an error during the process, ensure the temp file is removed
                 if os.path.exists(temp_file_path):

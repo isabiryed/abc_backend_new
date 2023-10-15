@@ -19,7 +19,7 @@ def execute_query(server_name, database_name, username, password, query, query_t
             cursor.execute(query)
             # Fetch data directly into a DataFrame with column names
             df = pd.DataFrame.from_records(cursor.fetchall(), columns=[column[0] for column in cursor.description])
-            print(df)
+            # print(df)
             return df
         elif query_type in ["UPDATE", "INSERT"]:
             cursor.execute(query)
