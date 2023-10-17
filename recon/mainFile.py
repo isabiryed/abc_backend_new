@@ -13,6 +13,9 @@ from .models import Transactions
 import logging
 from .setle_sabs import pre_processing
 
+# reconciled_data = None  # Initialize as None within the function scope
+succunreconciled_data = None  # Initialize as None within the function scope
+
 # Load the .env file
 load_dotenv()
 
@@ -83,10 +86,10 @@ def unserializable_floats(df: pd.DataFrame) -> pd.DataFrame:
     return df
     
 
-def reconcileMain(path, bank_code, user):
+def reconcileMain(path, bank_code, user):    
 
     try:
-        global reconciled_data, succunreconciled_data  # Indicate these are global variables
+        global  succunreconciled_data #,reconciled_data,  # Indicate these are global variables
        
         # Read the uploaded dataset from Excel
         uploaded_df = pd.read_excel(path , usecols=[0, 1, 2, 3], skiprows=0)
@@ -146,8 +149,8 @@ def reconcileMain(path, bank_code, user):
                                    feedback, (requestedRows), (UploadedRows),date_range_str, server, database, username, 
                                    password)
                     
-                    # Return succunreconciled_data here
-                    return succunreconciled_data,reconciled_data
+                    # # Return succunreconciled_data here
+                    # return succunreconciled_data,reconciled_data
                     
                     # Log or handle success
                 except Exception as e:

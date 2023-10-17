@@ -27,7 +27,7 @@ from rest_framework.views import APIView
 from django.http import Http404
 from .db_connect import execute_query
 
-from .mainFile import reconciled_data,succunreconciled_data,unserializable_floats
+from .mainFile import succunreconciled_data,unserializable_floats
 
 
 from django.db.models import Q
@@ -158,20 +158,20 @@ class ReconcileView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-class ReversalsView(generics.ListAPIView):
-    serializer_class = TransactionSerializer
-    """
-    Retrieve reversal data.
-    """
+# class ReversalsView(generics.ListAPIView):
+#     serializer_class = TransactionSerializer
+#     """
+#     Retrieve reversal data.
+#     """
 
-    def get_queryset(self):
-        # Use values from .env for database connection
-        bank_code = get_bank_code_from_request(self.request)
-        return Transactions.objects.filter(Q(request_type="1200")& (Q(issuer_code = bank_code)|Q(acquirer_code = bank_code))).exclude(amount="0").exclude(trn_status_0=None).exclude(trn_status_1=None)
+#     def get_queryset(self):
+#         # Use values from .env for database connection
+#         bank_code = get_bank_code_from_request(self.request)
+#         return Transactions.objects.filter(Q(request_type="1200")& (Q(issuer_code = bank_code)|Q(acquirer_code = bank_code))).exclude(amount="0").exclude(trn_status_0=None).exclude(trn_status_1=None)
         
-        # The data returned by select_reversals is assumed to be in a suitable format for JSON serialization
+#         # The data returned by select_reversals is assumed to be in a suitable format for JSON serialization
 
-        # return Response(data, status=status.HTTP_200_OK)
+#         # return Response(data, status=status.HTTP_200_OK)
 
 class ReversalsView(generics.ListAPIView):
     serializer_class = ReconciliationSerializer
@@ -191,67 +191,67 @@ class ExceptionsView(generics.ListAPIView):
 
         # return Recon.objects.filter(Q(issuer_code = bank_code)|Q(acquirer_code=bank_code)).exclude(excep_flag = None)
     
-# class ReconciledDataView(APIView):
-#     """
-#     Retrieve reconciled data.
-#     """
-
-#     def get(self, request, *args, **kwargs):
-        
-#         # Call the reconcileddata_req function to get reconciled data
-#         bank_code = get_bank_code_from_request(request)
-#         result = reconcileddata_req(server, database, username, password, bank_code)
-        
-#         if result is not None:
-#             reconciled_data_cleaned = unserializable_floats(result)
-#             data = reconciled_data_cleaned.to_dict(orient='records')
-#             return Response(data, status=status.HTTP_200_OK)
-#         else:
-#             raise Http404("Reconciled data not found")        
-
 class ReconciledDataView(APIView):
     """
     Retrieve reconciled data.
     """
 
     def get(self, request, *args, **kwargs):
-        # You can directly use the reconciled_data from the main file
-        if reconciled_data is not None:
-            reconciled_data_cleaned = unserializable_floats(reconciled_data)
+        
+        # Call the reconcileddata_req function to get reconciled data
+        bank_code = get_bank_code_from_request(request)
+        result = reconcileddata_req(server, database, username, password, bank_code)
+        
+        if result is not None:
+            reconciled_data_cleaned = unserializable_floats(result)
             data = reconciled_data_cleaned.to_dict(orient='records')
             return Response(data, status=status.HTTP_200_OK)
         else:
-            raise Http404("Reconciled data not found")
+            raise Http404("Reconciled data not found")        
 
-# class UnReconciledDataView(APIView):
+# class ReconciledDataView(APIView):
 #     """
-#     Retrieve unreconciled data.
+#     Retrieve reconciled data.
 #     """
 
 #     def get(self, request, *args, **kwargs):
-#         global succunreconciled_data
-
-#         if succunreconciled_data is not None:
-            
-#             unreconciled_data_cleaned = unserializable_floats(succunreconciled_data)
-#             data =  unreconciled_data_cleaned.to_dict(orient='records')
+#         # You can directly use the reconciled_data from the main file
+#         if reconciled_data is not None:
+#             reconciled_data_cleaned = unserializable_floats(reconciled_data)
+#             data = reconciled_data_cleaned.to_dict(orient='records')
 #             return Response(data, status=status.HTTP_200_OK)
 #         else:
-#             raise Http404("unReconciled data not found")  
+#             raise Http404("Reconciled data not found")
 
 class UnReconciledDataView(APIView):
     """
-    Retrieve reconciled data.
+    Retrieve unreconciled data.
     """
 
     def get(self, request, *args, **kwargs):
-        # You can directly use the reconciled_data from the main file
+        global succunreconciled_data
+
         if succunreconciled_data is not None:
+            
             unreconciled_data_cleaned = unserializable_floats(succunreconciled_data)
-            data = unreconciled_data_cleaned.to_dict(orient='records')
+            data =  unreconciled_data_cleaned.to_dict(orient='records')
             return Response(data, status=status.HTTP_200_OK)
         else:
-            raise Http404("Unreconciled data not found")
+            raise Http404("unReconciled data not found")  
+
+# class UnReconciledDataView(APIView):
+#     """
+#     Retrieve reconciled data.
+#     """
+
+#     def get(self, request, *args, **kwargs):
+#         # You can directly use the reconciled_data from the main file
+#         if succunreconciled_data is not None:
+#             unreconciled_data_cleaned = unserializable_floats(succunreconciled_data)
+#             data = unreconciled_data_cleaned.to_dict(orient='records')
+#             return Response(data, status=status.HTTP_200_OK)
+#         else:
+#             raise Http404("Unreconciled data not found")
 
 class ReconStatsView(generics.ListAPIView):
     serializer_class = LogSerializer
