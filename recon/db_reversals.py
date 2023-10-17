@@ -1,6 +1,6 @@
 from .db_connect import execute_query
 
-def select_reversals(server, database, username, password, swift_code_up):
+def select_reversals(server, database, username, password, Bank_code):
     # SQL query to select distinct reversals
     reversals_select_query = f"""
         SELECT DISTINCT
@@ -34,7 +34,7 @@ def select_reversals(server, database, username, password, swift_code_up):
                 (A.TRAN_STATUS_1 IN ('0','00') AND A.TRAN_STATUS_0 NOT IN ('null','00','0'))
             )
             AND A.TXN_TYPE NOT IN ('ACI','AGENTFLOATINQ','BI','MINI')
-            AND (ISSUER_CODE = '{swift_code_up}' OR ACQUIRER_CODE = '{swift_code_up}')
+            AND (ISSUER_CODE = '{Bank_code}' OR ACQUIRER_CODE = '{Bank_code}')
         GROUP BY
             A.DATE_TIME, A.TRN_REF, A.TXN_TYPE, A.ISSUER, A.ACQUIRER, A.AMOUNT,
             A.REQUEST_TYPE, B.REQUEST_TYPE, A.TRAN_REF_0, A.TRAN_REF_1,

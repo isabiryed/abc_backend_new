@@ -38,24 +38,3 @@ def execute_query(server_name, database_name, username, password, query, query_t
     finally:
         if conn:
             conn.close()
-
-# if __name__ == "__main__":
-#     # Example usage for SELECT query:    
-
-#     # Load the .env file
-#     load_dotenv()
-
-#     # Get the environment variables
-#     server = os.getenv('DB_SERVER')
-#     database = os.getenv('DB_NAME')
-#     username = os.getenv('DB_USERNAME')
-#     password = os.getenv('DB_PASSWORD')
-#     # Test the connection
-#     test_query = "SELECT TOP 2 DATE_TIME, TRN_REF, TXN_TYPE FROM Transactions"  # A simple query to test the connection
-#     result_df = execute_query(server, database, username, password, test_query)
-
-#     if result_df is not None:
-#         print("Connection successful.")
-#         print(result_df)  # Print the result of the test query
-#     else:
-#         print("Connection failed.")

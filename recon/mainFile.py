@@ -13,9 +13,6 @@ from .models import Transactions
 import logging
 from .setle_sabs import pre_processing
 
-reconciled_data = None
-succunreconciled_data = None
-
 # Load the .env file
 load_dotenv()
 
@@ -148,6 +145,9 @@ def reconcileMain(path, bank_code, user):
                     insert_recon_stats(bank_code, len(reconciled_data), len(succunreconciled_data),len(exceptions), 
                                    feedback, (requestedRows), (UploadedRows),date_range_str, server, database, username, 
                                    password)
+                    
+                    # Return succunreconciled_data here
+                    return succunreconciled_data,reconciled_data
                     
                     # Log or handle success
                 except Exception as e:
