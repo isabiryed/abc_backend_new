@@ -153,3 +153,18 @@ def update_reconciliation(df, server, database, username, password, swift_code):
 
     return feedback
 
+def reconcileddata_req(server, database, username, password, bank_code):
+    # Get the current date in the format 'YYYY-MM-DD'
+    current_date = datetime.date.today().strftime('%Y-%m-%d')
+    
+    # Define the SQL query to select records where DATE_TIME is equal to the current date
+    select_query = f"""
+        SELECT *
+        FROM ReconLog
+        WHERE BANK_ID = '{bank_code}' AND CONVERT(DATE, DATE_TIME) = '{current_date}'
+    """    
+    # Execute the SQL query and retrieve the results
+    reconciled_results = execute_query(server, database, username, password, select_query, query_type="SELECT")
+    
+    return reconciled_results
+

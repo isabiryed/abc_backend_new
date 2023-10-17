@@ -60,20 +60,14 @@ def get_bank_code_from_request(request):
     
     return bank_code
 
-def reconcileddata_req(server, database, username, password, bank_code):
-    # Get the current date in the format 'YYYY-MM-DD'
-    current_date = datetime.date.today().strftime('%Y-%m-%d')
-    
-    # Define the SQL query to select records where DATE_TIME is equal to the current date
-    select_query = f"""
-        SELECT DATE_TIME, TRAN_DATE, BATCH, TRN_REF, ACQUIRER_CODE, ISSUER_CODE, EXCEP_FLAG, ACQ_FLG, ISS_FLG, ACQ_FLG_DATE, ISS_FLG_DATE
-        FROM ReconLog
-        WHERE BANK_ID = '{bank_code}' AND CONVERT(DATE, DATE_TIME) = '{current_date}'
-    """    
-    # Execute the SQL query and retrieve the results
-    reconciled_results = execute_query(server, database, username, password, select_query, query_type="SELECT")
-    
-    return reconciled_results
+
+class ReversalsView(generics.ListAPIView):
+    serializer_class = ReconciliationSerializer
+    def get_queryset(self):
+        bank_code = get_bank_code_from_request(self.request)
+        result = select_reversals(server, database, username, password,bank_code)
+           
+        return Response(result, status=status.HTTP_200_OK)
 
 class ReconciliationListView(generics.ListCreateAPIView):
     queryset = Recon.objects.all()
