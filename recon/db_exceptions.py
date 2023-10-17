@@ -8,7 +8,7 @@ def select_exceptions(server, database, username, password,Swift_code_up):
             CASE WHEN ACQ_FLG = 1 OR ISS_FLG =1 THEN 'Partly Receonciled' WHEN ACQ_FLG = 1 AND ISS_FLG =1 THEN 'Fully Reconciled' END AS RECON_STATUS
 
             FROM Recon 
-            WHERE EXCEP_FLAG IS NOT NULL
+            WHERE EXCEP_FLAG = 'Y'
             AND (ISSUER_CODE = '{Swift_code_up}' OR ACQUIRER_CODE = '{Swift_code_up}')  """
     
     # Execute the SQL query and retrieve the results

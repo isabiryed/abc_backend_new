@@ -30,57 +30,6 @@ password = os.getenv('DB_PASSWORD')
 queryTst = "SELECT 1"
 connection_string = execute_query(server, database, username, password,queryTst)
 
-def update_exception_flag(df, server, database, username, password, swift_code):
-    # Check if DataFrame is empty
-    if df.empty:
-        logging.warning("No Exceptions Records to Update.")
-        return "No records to update"
-
-    # Check if 'TRN_REF' column exists in the DataFrame
-    if 'TRN_REF2' not in df.columns:
-        logging.error("'TRN_REF' column is missing from the DataFrame.")
-        logging.error(f"Columns in DataFrame: {df.columns}")
-        return
-
-    update_count = 0
-    update_queries = []
-
-    for index, row in df.iterrows():
-        # Safely retrieve 'TRN_REF' from the row
-        trn_ref = row.get('TRN_REF2', None)
-
-        # Check if trn_ref is None or an empty string
-        if not trn_ref:
-            logging.warning(f"Empty or missing Exceptions Trn Reference for index {index}.")
-            logging.error(f"Row Data: {row}")
-            continue
-
-        # Update Query
-        update_query = f"""
-            UPDATE recon
-            SET
-                EXCEP_FLAG = CASE WHEN (EXCEP_FLAG IS NULL OR EXCEP_FLAG = 'N' OR EXCEP_FLAG != 'Y')
-                AND (ISSUER_CODE = '{swift_code}' OR ACQUIRER_CODE = '{swift_code}')
-                THEN 'Y' ELSE 'N' END
-            WHERE TRN_REF = '{trn_ref}'
-        """
-        
-        update_queries.append(update_query)
-        update_count += 1
-
-    # Execute update queries in batches
-    if update_queries:
-        batch_update_query = "; ".join(update_queries)
-        execute_query(server, database, username, password, batch_update_query, query_type="UPDATE")
-
-    if update_count == 0:
-        logging.info("No Exceptions were updated.")
-
-    exceptions_feedback = f"Exceptions Updated: {update_count}"
-    logging.info(exceptions_feedback)
-
-    return exceptions_feedback
-
 def use_cols(df):
     """
     Renames the 'Original_ABC Reference' column to 'Reference' and selects specific columns.
@@ -170,7 +119,6 @@ def reconcileMain(path, bank_code, user):
             AND AMOUNT <> 0
             AND TXN_TYPE NOT IN ('ACI','AGENTFLOATINQ','BI','MINI')
      """
-
         # Execute the SQL query
         datadump = execute_query(server, database, username, password, query, query_type="SELECT")
       
@@ -183,28 +131,29 @@ def reconcileMain(path, bank_code, user):
                                 
             merged_df, reconciled_data, succunreconciled_data, exceptions = process_reconciliation(uploaded_df_processed, db_preprocessed)  
            
-
             if not reconciled_data.empty:
                 succunreconciled_data = use_cols(succunreconciled_data) 
                 reconciled_data = use_cols(reconciled_data)
                 exceptions = use_cols(exceptions)                                      
 
-                feedback = update_reconciliation(reconciled_data, server, database, username, password, bank_code)                
-                
-                # Initialize exceptions_feedback with a default value
-                exceptions_feedback = None 
-                # Check if exceptions DataFrame is not empty, if not empty then update exception flag
-                if not exceptions.empty:
-                    exceptions_feedback = update_exception_flag(exceptions, server, database, username, password,bank_code)
+                feedback = update_reconciliation(reconciled_data, server, database, username, password, bank_code)               
+                                               
+                # insert_recon_stats(
+                #                     bank_code, len(reconciled_data), len(succunreconciled_data), len(exceptions), feedback,
+                #                     (requestedRows), (UploadedRows), date_range_str
+                #                 )
 
-                else:                                
-                     exceptions_feedback = "No exceptions to update."
+                try:
+                                        
+                    insert_recon_stats(bank_code, len(reconciled_data), len(succunreconciled_data),len(exceptions), 
+                                   feedback, (requestedRows), (UploadedRows),date_range_str, server, database, username, 
+                                   password)
+                    
+                    # Log or handle success
+                except Exception as e:
+                    # Handle the exception (e.g., log the error or take appropriate action)
+                    print(f"Error inserting data: {str(e)}")                           
                 
-                insert_recon_stats(
-                    bank_code, user, len(reconciled_data), len(succunreconciled_data), 
-                    len(exceptions), feedback, (requestedRows), (UploadedRows), 
-                    date_range_str, server, database, username, password
-                )
             
                 return merged_df, reconciled_data, succunreconciled_data, exceptions, feedback, requestedRows, UploadedRows, date_range_str
             

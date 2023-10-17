@@ -3,6 +3,9 @@ from rest_framework import generics,viewsets
 from io import BytesIO
 from zipfile import ZipFile
 from django.http import FileResponse, Http404
+from recon.db_connect import execute_query
+from recon.db_exceptions import select_exceptions
+from recon.db_recon_stats import recon_stats_req
 from recon.mainFile import reconcileMain
 from recon.setle_sabs import setleSabs, unserializable_floats
 from recon.setlement_ import settle
@@ -14,6 +17,11 @@ from rest_framework.response import Response
 from rest_framework import generics,status
 from .models import Bank,UserBankMapping,Transactions
 from rest_framework.permissions import IsAuthenticated
+from datetime import datetime
+import datetime
+
+succunreconciled_data = None
+
 
 from django.db.models import Q
 from dotenv import load_dotenv
@@ -29,13 +37,13 @@ password = os.getenv('DB_PASSWORD')
 
 # Create your views here.
 
-# def get_swift_code_from_request(request):
-#     user = request.user
-#     mapping = UserBankMapping.objects.filter(user=user)[0]
-#     bank = mapping.bank
-#     swift_code = bank.swift_code
+def get_swift_code_from_request(request):
+    user = request.user
+    mapping = UserBankMapping.objects.filter(user=user)[0]
+    bank = mapping.bank
+    swift_code = bank.swift_code
 
-#     return swift_code
+    return swift_code
 
 def get_bank_code_from_request(request):
     user = request.user
@@ -44,6 +52,21 @@ def get_bank_code_from_request(request):
     bank_code = bank.bank_code    
     
     return bank_code
+
+def reconcileddata_req(server, database, username, password, bank_code):
+    # Get the current date in the format 'YYYY-MM-DD'
+    current_date = datetime.date.today().strftime('%Y-%m-%d')
+    
+    # Define the SQL query to select records where DATE_TIME is equal to the current date
+    select_query = f"""
+        SELECT DATE_TIME, TRAN_DATE, BATCH, TRN_REF, ACQUIRER_CODE, ISSUER_CODE, EXCEP_FLAG, ACQ_FLG, ISS_FLG, ACQ_FLG_DATE, ISS_FLG_DATE
+        FROM ReconLog
+        WHERE BANK_ID = '{bank_code}' AND CONVERT(DATE, DATE_TIME) = '{current_date}'
+    """    
+    # Execute the SQL query and retrieve the results
+    reconciled_results = execute_query(server, database, username, password, select_query, query_type="SELECT")
+    
+    return reconciled_results
 
 class ReconciliationListView(generics.ListCreateAPIView):
     queryset = Recon.objects.all()
@@ -141,13 +164,17 @@ class ReversalsView(generics.ListAPIView):
         
         # The data returned by select_reversals is assumed to be in a suitable format for JSON serialization
 
-        return Response(data, status=status.HTTP_200_OK)
+        # return Response(data, status=status.HTTP_200_OK)
     
 class ExceptionsView(generics.ListAPIView):
     serializer_class = ReconciliationSerializer
     def get_queryset(self):
         bank_code = get_bank_code_from_request(self.request)
-        return Recon.objects.filter(Q(issuer_code = bank_code)|Q(acquirer_code=bank_code)).exclude(excep_flag = None)
+        result = select_exceptions(server, database, username, password,bank_code)
+        
+        return Response(result, status=status.HTTP_200_OK)
+
+        # return Recon.objects.filter(Q(issuer_code = bank_code)|Q(acquirer_code=bank_code)).exclude(excep_flag = None)
     
 class ReconciledDataView(APIView):
     """
@@ -157,12 +184,16 @@ class ReconciledDataView(APIView):
     def get(self, request, *args, **kwargs):
         global reconciled_data
 
+        # Call the reconcileddata_req function to get reconciled data
+        bank_code = get_bank_code_from_request(request)
+        reconciled_data = reconcileddata_req(server, database, username, password, bank_code)
+        
         if reconciled_data is not None:
             reconciled_data_cleaned = unserializable_floats(reconciled_data)
             data = reconciled_data_cleaned.to_dict(orient='records')
             return Response(data, status=status.HTTP_200_OK)
         else:
-            raise Http404("Reconciled data not found")
+            raise Http404("Reconciled data not found")        
         
 class UnReconciledDataView(APIView):
     """
@@ -184,7 +215,12 @@ class ReconStatsView(generics.ListAPIView):
     serializer_class = LogSerializer
     def get_queryset(self):
         bank_code = get_bank_code_from_request(self.request)
-        return ReconLog.objects.filter(bank_id=bank_code)
+        # print(res = ReconLog.objects.filter(bank_id=bank_code)
+        result = recon_stats_req(server, database, username, password, bank_code)
+        # return ReconLog.objects.filter(bank_id=bank_code)
+        print(result)
+        return result
+    
 
 class sabsreconcile_csv_filesView(APIView):
 

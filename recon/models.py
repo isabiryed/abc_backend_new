@@ -33,6 +33,10 @@ class ReconLog(models.Model):
     excep_rws = models.CharField(db_column='EXCEP_RWS', max_length=15, blank=True, null=True)  # Field name made lowercase.
     feedback = models.TextField(db_column='FEEDBACK',blank=True, null=True)
 
+    class Meta:
+        db_table = 'ReconLog'
+                
+
 class Recon(models.Model):
     date_time = models.DateTimeField(db_column='DATE_TIME',blank=True, null=True,default=timezone.now)  # Field name made lowercase.
     tran_date = models.DateTimeField(db_column='TRAN_DATE',blank=True, null=True)  # Field name made lowercase.
@@ -46,6 +50,10 @@ class Recon(models.Model):
     acq_flg_date = models.DateTimeField(db_column='ACQ_FLG_DATE', blank=True, null=True)  # Field name made lowercase.
     iss_flg_date = models.DateTimeField(db_column='ISS_FLG_DATE', blank=True, null=True)  # Field name made lowercase.
     last_modified_by_user = models.ForeignKey(User,on_delete=models.CASCADE,blank=True,null=True)
+
+    class Meta:
+        db_table = 'Recon'
+        
 
     def __str__(self) -> str:
         return self.trn_ref
@@ -86,8 +94,8 @@ class Transactions(models.Model):
     
     class Meta:
         managed = False
-        db_table = 'Transactions'
-
+        db_table = 'Transactions'        
+        
 def validate_file_extension(value):
     if(value.file.content_type not in ['application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']):
         raise ValidationError(u'Wrong File Type')
