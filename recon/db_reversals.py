@@ -2,7 +2,7 @@ from .db_connect import execute_query
 
 def select_reversals(server, database, username, password, Bank_code):
     # SQL query to select distinct reversals
-    reversals_select_query = f"""
+    select_query = f"""
         SELECT DISTINCT
             A.DATE_TIME, A.TRN_REF, A.TXN_TYPE, A.ISSUER, A.ACQUIRER, A.AMOUNT,
             A.REQUEST_TYPE AS FIRST_REQUEST,
@@ -43,6 +43,6 @@ def select_reversals(server, database, username, password, Bank_code):
     """
     
     # Execute the SQL query and retrieve the results
-    reversal_results = execute_query(server, database, username, password, reversals_select_query, query_type="SELECT")
+    reversal_results = execute_query(server, database, username, password, select_query, query_type="SELECT")
     
     return reversal_results

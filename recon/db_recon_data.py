@@ -1,6 +1,6 @@
 import pandas as pd
 import logging
-from datetime import datetime
+import datetime
 from .db_connect import execute_query
 import pyodbc
 

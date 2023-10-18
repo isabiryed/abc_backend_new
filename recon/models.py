@@ -49,7 +49,7 @@ class Recon(models.Model):
     iss_flg = models.CharField(db_column='ISS_FLG', max_length=6, blank=True, null=True)  # Field name made lowercase.
     acq_flg_date = models.DateTimeField(db_column='ACQ_FLG_DATE', blank=True, null=True)  # Field name made lowercase.
     iss_flg_date = models.DateTimeField(db_column='ISS_FLG_DATE', blank=True, null=True)  # Field name made lowercase.
-    last_modified_by_user = models.ForeignKey(User,on_delete=models.CASCADE,blank=True,null=True)
+    last_modified_by_user = models.ForeignKey(User,db_column='USER_ID',on_delete=models.CASCADE,blank=True,null=True)
 
     class Meta:
         db_table = 'Recon'

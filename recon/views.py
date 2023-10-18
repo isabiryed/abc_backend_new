@@ -62,13 +62,23 @@ def get_bank_code_from_request(request):
     return bank_code
 
 
-class ReversalsView(generics.ListAPIView):
-    serializer_class = ReconciliationSerializer
-    def get_queryset(self):
-        bank_code = get_bank_code_from_request(self.request)
-        result = select_reversals(server, database, username, password,bank_code)
-           
-        return Response(result, status=status.HTTP_200_OK)
+# class ReversalsView(generics.ListAPIView):
+#     """
+#     Retrieve reconciled data.
+#     """
+
+#     def get(self, request, *args, **kwargs):
+        
+#         # Call the reconcileddata_req function to get reconciled data
+#         bank_code = get_bank_code_from_request(request)
+#         result = select_reversals(server, database, username, password, bank_code)
+        
+#         if result is not None:
+#             reversals_ = unserializable_floats(result)
+#             data = reversals_.to_dict(orient='records')
+#             return Response(data, status=status.HTTP_200_OK)
+#         else:
+#             raise Http404("Reversals data not found")        
 
 class ReconciliationListView(generics.ListCreateAPIView):
     queryset = Recon.objects.all()
@@ -153,38 +163,45 @@ class ReconcileView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-# class ReversalsView(generics.ListAPIView):
-#     serializer_class = TransactionSerializer
-#     """
-#     Retrieve reversal data.
-#     """
-
-#     def get_queryset(self):
-#         # Use values from .env for database connection
-#         bank_code = get_bank_code_from_request(self.request)
-#         return Transactions.objects.filter(Q(request_type="1200")& (Q(issuer_code = bank_code)|Q(acquirer_code = bank_code))).exclude(amount="0").exclude(trn_status_0=None).exclude(trn_status_1=None)
-        
-#         # The data returned by select_reversals is assumed to be in a suitable format for JSON serialization
-
-#         # return Response(data, status=status.HTTP_200_OK)
-
 class ReversalsView(generics.ListAPIView):
-    serializer_class = ReconciliationSerializer
-    def get_queryset(self):
-        bank_code = get_bank_code_from_request(self.request)
-        result = select_reversals(server, database, username, password,bank_code)
-           
-        return Response(result, status=status.HTTP_200_OK)
-    
-class ExceptionsView(generics.ListAPIView):
-    serializer_class = ReconciliationSerializer
-    def get_queryset(self):
-        bank_code = get_bank_code_from_request(self.request)
-        result = select_exceptions(server, database, username, password,bank_code)
-         
-        return Response(result, status=status.HTTP_200_OK)
+    serializer_class = TransactionSerializer
+    """
+    Retrieve reversal data.
+    """
 
-        # return Recon.objects.filter(Q(issuer_code = bank_code)|Q(acquirer_code=bank_code)).exclude(excep_flag = None)
+    def get_queryset(self):
+        # Use values from .env for database connection
+        bank_code = get_bank_code_from_request(self.request)
+        return Transactions.objects.filter(Q(request_type="1200")& (Q(issuer_code = bank_code)|Q(acquirer_code = bank_code))).exclude(amount="0").exclude(trn_status_0=None).exclude(trn_status_1=None)
+        
+        # The data returned by select_reversals is assumed to be in a suitable format for JSON serialization
+
+        # return Response(data, status=status.HTTP_200_OK)
+
+class ExceptionsView(generics.ListAPIView):
+    serializer_class = TransactionSerializer
+    """
+    Retrieve Exceptions data.
+    """
+
+    def get_queryset(self):
+        # Use values from .env for database connection
+        bank_code = get_bank_code_from_request(self.request)
+        return Recon.objects.filter(Q(excep_flag="1200")& (Q(issuer_code = bank_code)|Q(acquirer_code = bank_code)))
+        
+        # The data returned by select_reversals is assumed to be in a suitable format for JSON serialization
+
+        # return Response(data, status=status.HTTP_200_OK)
+    
+# class ExceptionsView(generics.ListAPIView):
+#     serializer_class = ReconciliationSerializer
+#     def get_queryset(self):
+#         bank_code = get_bank_code_from_request(self.request)
+#         result = select_exceptions(server, database, username, password,bank_code)
+         
+#         return Response(result, status=status.HTTP_200_OK)
+
+#         # return Recon.objects.filter(Q(issuer_code = bank_code)|Q(acquirer_code=bank_code)).exclude(excep_flag = None)
     
 class ReconciledDataView(APIView):
     """
@@ -248,14 +265,25 @@ class UnReconciledDataView(APIView):
 #         else:
 #             raise Http404("Unreconciled data not found")
 
+# class ReconStatsView(generics.ListAPIView):
+#     serializer_class = LogSerializer
+#     def get_queryset(self):
+#         bank_code = get_bank_code_from_request(self.request)
+#         # print(res = ReconLog.objects.filter(bank_id=bank_code)
+#         result = recon_stats_req(server, database, username, password, bank_code)
+#         # return ReconLog.objects.filter(bank_id=bank_code)        
+#         return result  
+
 class ReconStatsView(generics.ListAPIView):
     serializer_class = LogSerializer
+    """
+    Retrieve Stats data.
+    """
+
     def get_queryset(self):
+        # Use values from .env for database connection
         bank_code = get_bank_code_from_request(self.request)
-        # print(res = ReconLog.objects.filter(bank_id=bank_code)
-        result = recon_stats_req(server, database, username, password, bank_code)
-        # return ReconLog.objects.filter(bank_id=bank_code)        
-        return result    
+        return ReconLog.objects.filter(Q(bank_id=bank_code))  
 
 class sabsreconcile_csv_filesView(APIView):
 
