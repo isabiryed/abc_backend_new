@@ -9,6 +9,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 class ReconciliationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recon
+        fields = '__all__' 
         
 class BankSerializer(serializers.ModelSerializer):
     class Meta:

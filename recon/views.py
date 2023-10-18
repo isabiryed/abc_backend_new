@@ -179,7 +179,12 @@ class ReversalsView(generics.ListAPIView):
         # return Response(data, status=status.HTTP_200_OK)
 
 class ExceptionsView(generics.ListAPIView):
-    serializer_class = TransactionSerializer
+
+    class Meta:
+        model = Recon
+        fields = '__all__' 
+        
+    serializer_class = ReconciliationSerializer
     """
     Retrieve Exceptions data.
     """
@@ -187,7 +192,7 @@ class ExceptionsView(generics.ListAPIView):
     def get_queryset(self):
         # Use values from .env for database connection
         bank_code = get_bank_code_from_request(self.request)
-        return Recon.objects.filter(Q(excep_flag="1200")& (Q(issuer_code = bank_code)|Q(acquirer_code = bank_code)))
+        return Recon.objects.filter(Q(excep_flag="Y")& (Q(issuer_code = bank_code)|Q(acquirer_code = bank_code)))
         
         # The data returned by select_reversals is assumed to be in a suitable format for JSON serialization
 
