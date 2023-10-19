@@ -21,6 +21,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.http import Http404
 
+from django.db.models import F, Case, When, Value, CharField,Q
+from django.db.models.functions import Cast
+
 
 from .utils import unserializable_floats
 
@@ -137,21 +140,45 @@ class ReconcileView(APIView):
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 class ReversalsView(generics.ListAPIView):
     serializer_class = TransactionSerializer
-    """
-    Retrieve reversal data.
-    """
 
     def get_queryset(self):
-        # Use values from .env for database connection
         bank_code = get_bank_code_from_request(self.request)
-        return Transactions.objects.filter(Q(request_type="1200")& (Q(issuer_code = bank_code)|Q(acquirer_code = bank_code))).exclude(amount="0").exclude(trn_status_0=None).exclude(trn_status_1=None)
-        
-        # The data returned by select_reversals is assumed to be in a suitable format for JSON serialization
 
-        # return Response(data, status=status.HTTP_200_OK)
+        queryset = Transactions.objects.filter(
+            Q(request_type__in=['1420', '1421']) &
+            Q(trn_ref__in=['ACI', 'AGENTFLOATINQ', 'BI', 'MINI']) &
+            (Q(issuer_code=bank_code) | Q(acquirer_code=bank_code)) &
+            ~Q(amount='0') &
+            ~Q(trn_status_0=None) &
+            ~Q(trn_status_1=None)
+        ).annotate(
+            Type=Case(
+                When(request_type='1420', then=Value('Reversal')),
+                When(request_type='1421', then=Value('Repeat Reversal')),
+                default=Value(None),
+                output_field=CharField()
+            ),
+            Status=Case(
+                When(response_code=None, then=Value('Pending')),
+                When(response_code__in=['0', '00'], then=Value('Successful')),
+                default=Value('Failed'),
+                output_field=CharField()
+            )
+        ).values(
+            'date_time',
+            'trn_ref',
+            'amount',
+            'issuer',
+            'acquirer',
+            'txn_type',
+            'Type',
+            'Status'
+        ).distinct()
+
+        return queryset
 
 class ExceptionsView(generics.ListAPIView):
        

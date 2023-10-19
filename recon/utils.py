@@ -51,7 +51,7 @@ def pre_processing(df):
 
 def use_cols(df):
     # Rename columns
-    df = df.rename(columns={'TXN_TYPE_y': 'TXN_TYPE', 'Original_TRN_REF': 'ABC REFERENCE','_merge':'MERGE','Recon Status':'STATUS'})
+    df = df.rename(columns={'TXN_TYPE_x': 'TXN_TYPE', 'Original_TRN_REF': 'ABC REFERENCE','_merge':'MERGE','Recon Status':'STATUS'})
 
     # Convert 'DATE_TIME' to datetime
     df['DATE_TIME'] = pd.to_datetime(df['DATE_TIME'].astype(str), format='%Y%m%d')
@@ -66,9 +66,9 @@ def backup_refs(df, reference_column):
     df['Original_' + reference_column] = df[reference_column]
     return df
 
-def date_range(df, date_column):
-    min_date = df[date_column].min().strftime('%Y-%m-%d')
-    max_date = df[date_column].max().strftime('%Y-%m-%d')
+def date_range(column):
+    min_date = column.min().strftime('%Y-%m-%d')
+    max_date = column.max().strftime('%Y-%m-%d')
     return min_date, max_date
     
 def process_reconciliation(DF1: pd.DataFrame, DF2: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame):

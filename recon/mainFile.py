@@ -31,12 +31,15 @@ def reconcileMain(path, bank_code, user):
         if uploaded_df.empty:
             return None, None, None, None, "Your uploaded file is empty", None, None, None
         
-        # Apply the date_range method to 'uploaded_df' and update it       
-        min_date, max_date = date_range(uploaded_df, 'Date')       
-        date_range_str = f"{min_date},{max_date}"
+        # Apply the date_range method to 'uploaded_df' and update it  
+        min_date, max_date = date_range(uploaded_df.iloc[:, 0])             
+        # min_date, max_date = date_range(uploaded_df, 'Date')       
+        date_range_str = f"{min_date},{max_date}"        
 
-        # Continue working with the modified DataFrame
-        uploaded_df = backup_refs(uploaded_df,'ABC Reference')           
+        # #Create copy of the refs
+        # uploaded_df = backup_refs(uploaded_df.iloc[:, 3])  
+        # Create a copy of the 4th column (index 3) and store it as a new column
+        uploaded_df = backup_refs(uploaded_df, uploaded_df.columns[3])         
            
         #Add new column Response_code with sucess_code
         uploaded_df['Response_code'] = '0'
