@@ -1,16 +1,12 @@
 from django.http import Http404
 from rest_framework import generics,viewsets
-from io import BytesIO
-from zipfile import ZipFile
-from django.http import FileResponse, Http404
-from recon.db_connect import execute_query
-from recon.db_exceptions import select_exceptions
-from recon.db_recon_data import reconcileddata_req
-from recon.db_recon_stats import recon_stats_req
-from recon.db_reversals import select_reversals
+import datetime as dt
+current_date = dt.date.today().strftime('%Y-%m-%d')
+
+
 from recon.mainFile import reconcileMain
-from recon.setle_sabs import setleSabs, unserializable_floats
-from recon.setlement_ import settle
+from recon.setlement_ import setleSabs,settle
+
 from .models import Recon,ReconLog,UploadedFile
 from .serializers import ReconcileSerializer, ReconciliationSerializer, SabsSerializer, SettlementSerializer,UploadedFileSerializer,LogSerializer,TransactionSerializer
 from openpyxl import load_workbook
@@ -19,16 +15,14 @@ from rest_framework.response import Response
 from rest_framework import generics,status
 from .models import Bank,UserBankMapping,Transactions
 from rest_framework.permissions import IsAuthenticated
-from datetime import datetime
-import datetime
 
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.http import Http404
-from .db_connect import execute_query
 
-from .mainFile import succunreconciled_data,unserializable_floats
+
+from .utils import unserializable_floats
 
 
 from django.db.models import Q
@@ -60,25 +54,6 @@ def get_bank_code_from_request(request):
     bank_code = bank.bank_code    
     
     return bank_code
-
-
-# class ReversalsView(generics.ListAPIView):
-#     """
-#     Retrieve reconciled data.
-#     """
-
-#     def get(self, request, *args, **kwargs):
-        
-#         # Call the reconcileddata_req function to get reconciled data
-#         bank_code = get_bank_code_from_request(request)
-#         result = select_reversals(server, database, username, password, bank_code)
-        
-#         if result is not None:
-#             reversals_ = unserializable_floats(result)
-#             data = reversals_.to_dict(orient='records')
-#             return Response(data, status=status.HTTP_200_OK)
-#         else:
-#             raise Http404("Reversals data not found")        
 
 class ReconciliationListView(generics.ListCreateAPIView):
     queryset = Recon.objects.all()
@@ -179,11 +154,7 @@ class ReversalsView(generics.ListAPIView):
         # return Response(data, status=status.HTTP_200_OK)
 
 class ExceptionsView(generics.ListAPIView):
-
-    class Meta:
-        model = Recon
-        fields = '__all__' 
-        
+       
     serializer_class = ReconciliationSerializer
     """
     Retrieve Exceptions data.
@@ -194,51 +165,15 @@ class ExceptionsView(generics.ListAPIView):
         bank_code = get_bank_code_from_request(self.request)
         return Recon.objects.filter(Q(excep_flag="Y")& (Q(issuer_code = bank_code)|Q(acquirer_code = bank_code)))
         
-        # The data returned by select_reversals is assumed to be in a suitable format for JSON serialization
-
-        # return Response(data, status=status.HTTP_200_OK)
-    
-# class ExceptionsView(generics.ListAPIView):
-#     serializer_class = ReconciliationSerializer
-#     def get_queryset(self):
-#         bank_code = get_bank_code_from_request(self.request)
-#         result = select_exceptions(server, database, username, password,bank_code)
-         
-#         return Response(result, status=status.HTTP_200_OK)
-
-#         # return Recon.objects.filter(Q(issuer_code = bank_code)|Q(acquirer_code=bank_code)).exclude(excep_flag = None)
-    
 class ReconciledDataView(APIView):
     """
     Retrieve reconciled data.
     """
 
-    def get(self, request, *args, **kwargs):
-        
-        # Call the reconcileddata_req function to get reconciled data
-        bank_code = get_bank_code_from_request(request)
-        result = reconcileddata_req(server, database, username, password, bank_code)
-        
-        if result is not None:
-            reconciled_data_cleaned = unserializable_floats(result)
-            data = reconciled_data_cleaned.to_dict(orient='records')
-            return Response(data, status=status.HTTP_200_OK)
-        else:
-            raise Http404("Reconciled data not found")        
-
-# class ReconciledDataView(APIView):
-#     """
-#     Retrieve reconciled data.
-#     """
-
-#     def get(self, request, *args, **kwargs):
-#         # You can directly use the reconciled_data from the main file
-#         if reconciled_data is not None:
-#             reconciled_data_cleaned = unserializable_floats(reconciled_data)
-#             data = reconciled_data_cleaned.to_dict(orient='records')
-#             return Response(data, status=status.HTTP_200_OK)
-#         else:
-#             raise Http404("Reconciled data not found")
+    def get_queryset(self):
+        # Use values from .env for database connection
+        bank_code = get_bank_code_from_request(self.request)
+        return Recon.objects.filter(Q(date_time=current_date)& (Q(issuer_code = bank_code)|Q(acquirer_code = bank_code)))
 
 class UnReconciledDataView(APIView):
     """
