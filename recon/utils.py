@@ -195,11 +195,7 @@ def unserializable_floats(df: pd.DataFrame) -> pd.DataFrame:
 #### ***************Settlemt file**********************####
 ####***************************************************####                                    
 
-class SettlementProcessor:
-    def __init__(self, df: pd.DataFrame):
-        self.df = df
-
-    def combine_transactions(df: pd.DataFrame, acquirer_col: str = 'Payer', issuer_col: str = 'Beneficiary', 
+def combine_transactions(df: pd.DataFrame, acquirer_col: str = 'Payer', issuer_col: str = 'Beneficiary', 
                          amount_col: str = 'Tran Amount', type_col: str = 'Tran Type') -> pd.DataFrame:
         """
         Combine transactions based on certain conditions.
@@ -239,9 +235,9 @@ class SettlementProcessor:
         # Drop the "Key" column
         combined_result = combined_result.drop(columns=["Key"])
         
-        return combined_result
+        return combined_result    
 
-    def add_payer_beneficiary(df: pd.DataFrame) -> pd.DataFrame:
+def add_payer_beneficiary(df: pd.DataFrame) -> pd.DataFrame:
         """
         Adds 'Payer' and 'Beneficiary' columns to the DataFrame.
 
@@ -250,9 +246,9 @@ class SettlementProcessor:
         """
         df['Payer'] = df['ACQUIRER']
         df['Beneficiary'] = df['ISSUER']
-        return df
+        return df    
 
-    def pre_processing_amt(df):
+def pre_processing_amt(df):
         # Helper function
         def clean_amount(value):
             try:
@@ -265,9 +261,9 @@ class SettlementProcessor:
         for column in ['AMOUNT', 'FEE', 'ABC_COMMISSION']:  # only these columns
             df[column] = df[column].apply(clean_amount)
         
-        return df
+        return df    
 
-    def convert_batch_to_int(df: pd.DataFrame) -> pd.DataFrame:
+def convert_batch_to_int(df: pd.DataFrame) -> pd.DataFrame:
         """
         Converts the 'BATCH' column to numeric, rounds it to the nearest integer, and fills NaN with 0.
 
@@ -279,7 +275,7 @@ class SettlementProcessor:
         # Apply the round method
         df['BATCH'] = df['BATCH'].round(0).fillna(0).astype(int)
         
-        return df
+        return df    
 
 def select_setle_file(batch):
     try:
@@ -303,12 +299,7 @@ def select_setle_file(batch):
 #### ***************Recon Setle file**********************####
 ####***************************************************####    
 
-class ExcelFileProcessor:
-    def __init__(self, file_path, sheet_name):
-        self.file_path = file_path
-        self.sheet_name = sheet_name
-
-    def read_excel_file(self):
+def read_excel_file(self):
         try:
             with pd.ExcelFile(self.file_path) as xlsx:
                 df = pd.read_excel(xlsx, sheet_name=self.sheet_name, usecols=[0, 1, 2, 7, 8, 9, 11], skiprows=0)
@@ -317,7 +308,7 @@ class ExcelFileProcessor:
             return df
         except Exception as e:
             logging.error(f"An error occurred while opening the Excel file: {e}")
-            return None   
+            return None       
 
 def merge(DF1: pd.DataFrame, DF2: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
     

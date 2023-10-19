@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 import logging
-from .utils import  pre_processing, select_setle_file, SettlementProcessor, ExcelFileProcessor, merge, select_setle_file
+from .utils import convert_batch_to_int,  add_payer_beneficiary, combine_transactions, pre_processing, pre_processing_amt, read_excel_file, select_setle_file, merge, select_setle_file
 import glob
 
 # Load the .env file
@@ -23,20 +23,18 @@ def settle(batch):
         
         # Check if datadump is not None
         if datadump is not None and not datadump.empty:         
-            # Create a settlementProcessor instance
-            transaction_setle = SettlementProcessor(datadump)
-            
+                        
             # Apply the processing methods
-            datadump = transaction_setle.convert_batch_to_int()
-            datadump = transaction_setle.pre_processing_amt()
-            datadump = transaction_setle.add_payer_beneficiary()
+            datadump = convert_batch_to_int(datadump)
+            datadump = pre_processing_amt(datadump)
+            datadump = add_payer_beneficiary(datadump)
                   
         else:
             logging.warning("No records for processing found.")
             return None  # Return None to indicate that no records were found
 
         # Now you can use the combine_transactions method
-        setlement_result = SettlementProcessor.combine_transactions(acquirer_col='Payer', issuer_col='Beneficiary', amount_col='AMOUNT', type_col='TXN_TYPE')
+        setlement_result = combine_transactions(acquirer_col='Payer', issuer_col='Beneficiary', amount_col='AMOUNT', type_col='TXN_TYPE')
 
     except Exception as e:
         logging.error(f"Error: {str(e)}")
@@ -47,17 +45,12 @@ def settle(batch):
 
 def setleSabs(path, batch):
 
-    try:
-        # Create instances of ExcelFileProcessor and SettlementProcessor
-        excel_processor = ExcelFileProcessor()
-        settlement_processor = SettlementProcessor()
-        
-
+    try:     
         datadump = select_setle_file(batch)
 
         # Check if datadump is not None and not empty
         if datadump is not None and not datadump.empty:
-            datadump = settlement_processor.pre_processing_amt(datadump)
+            datadump = pre_processing_amt(datadump)
             datadump = pre_processing(datadump)
 
             # Processing SABSfile_ regardless of datadump's status
@@ -66,8 +59,8 @@ def setleSabs(path, batch):
                 logging.error(f"No matching Excel file found for '{path}'.")
             else:
                 matching_file = excel_files[0]
-                SABSfile_ = excel_processor.read_excel_file(matching_file, 'Transaction Report')
-                SABSfile_ = settlement_processor.pre_processing_amt(SABSfile_)
+                SABSfile_ = read_excel_file(matching_file, 'Transaction Report')
+                SABSfile_ = pre_processing_amt(SABSfile_)
                 SABSfile_ = pre_processing(SABSfile_)
 
             merged_setle, matched_setle, unmatched_setle, unmatched_setlesabs = merge(SABSfile_, datadump)

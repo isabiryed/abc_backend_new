@@ -1,38 +1,37 @@
-from django.http import Http404
-from rest_framework import generics,viewsets
+import io
+import os
 import datetime as dt
-current_date = dt.date.today().strftime('%Y-%m-%d')
+from zipfile import ZipFile
+from dotenv import load_dotenv
 
+from django.http import FileResponse, HttpResponse, Http404
+from django.views import View
+from django.db.models import Q, F, Case, When, Value, CharField
+from django.db.models.functions import Cast
+from django.http import HttpResponse
+
+import pandas as pd
+from openpyxl import load_workbook
+from rest_framework import generics, status, viewsets
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from recon.mainFile import reconcileMain
-from recon.setlement_ import setleSabs,settle
+from recon.setlement_ import setleSabs, settle
+from recon.utils import unserializable_floats
+from .models import Recon, ReconLog, UploadedFile, Bank, UserBankMapping, Transactions
+from .serializers import (
+    ReconcileSerializer, ReconciliationSerializer, SabsSerializer,
+    SettlementSerializer, UploadedFileSerializer, LogSerializer, TransactionSerializer
+)
 
-from .models import Recon,ReconLog,UploadedFile
-from .serializers import ReconcileSerializer, ReconciliationSerializer, SabsSerializer, SettlementSerializer,UploadedFileSerializer,LogSerializer,TransactionSerializer
-from openpyxl import load_workbook
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import generics,status
-from .models import Bank,UserBankMapping,Transactions
-from rest_framework.permissions import IsAuthenticated
+current_date = dt.date.today().strftime('%Y-%m-%d')
+# succunreconciled_data = None
 
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from django.http import Http404
-
-from django.db.models import F, Case, When, Value, CharField,Q
-from django.db.models.functions import Cast
-
-
-from .utils import unserializable_floats
-
-
-from django.db.models import Q
-from dotenv import load_dotenv
-import os
 # Load the .env file
 load_dotenv()
+
 
 # Get the environment variables
 server = os.getenv('DB_SERVER')
@@ -149,11 +148,9 @@ class ReversalsView(generics.ListAPIView):
 
         queryset = Transactions.objects.filter(
             Q(request_type__in=['1420', '1421']) &
-            Q(trn_ref__in=['ACI', 'AGENTFLOATINQ', 'BI', 'MINI']) &
+            Q(txn_type__in=['ACI', 'AGENTFLOATINQ', 'BI', 'MINI']) &
             (Q(issuer_code=bank_code) | Q(acquirer_code=bank_code)) &
-            ~Q(amount='0') &
-            ~Q(trn_status_0=None) &
-            ~Q(trn_status_1=None)
+            Q(date_time=current_date) & ~Q(amount='0')
         ).annotate(
             Type=Case(
                 When(request_type='1420', then=Value('Reversal')),
@@ -192,16 +189,62 @@ class ExceptionsView(generics.ListAPIView):
         bank_code = get_bank_code_from_request(self.request)
         return Recon.objects.filter(Q(excep_flag="Y")& (Q(issuer_code = bank_code)|Q(acquirer_code = bank_code)))
         
+# class ReconciledDataView(APIView):
+#     """
+#     Retrieve reconciled data.
+#     """
+
+#     def get_queryset(self):
+#         # Use values from .env for database connection
+#         bank_code = get_bank_code_from_request(self.request)
+#         return Recon.objects.filter(Q(date_time=current_date)& (Q(issuer_code = bank_code)|Q(acquirer_code = bank_code)))
+
 class ReconciledDataView(APIView):
     """
     Retrieve reconciled data.
     """
 
-    def get_queryset(self):
+    def get(self, request, *args, **kwargs):
         # Use values from .env for database connection
-        bank_code = get_bank_code_from_request(self.request)
-        return Recon.objects.filter(Q(date_time=current_date)& (Q(issuer_code = bank_code)|Q(acquirer_code = bank_code)))
+        bank_code = get_bank_code_from_request(request)
+        
+        queryset = Recon.objects.filter(
+            Q(date_time=current_date) & (Q(issuer_code=bank_code) | Q(acquirer_code=bank_code)))
+        
+        if queryset.exists():
+            # Convert queryset to serialized data as needed
+            serialized_data = ReconciliationSerializer(queryset)  
+            return Response(serialized_data, status=status.HTTP_200_OK)
+        else:
+            raise Http404("Reconciled data not found")
 
+# class ReconciledDataView(View):
+#     def get(self, request, *args, **kwargs):
+#         # Use values from .env for database connection
+#         bank_code = get_bank_code_from_request(request)
+        
+#         queryset = Recon.objects.filter(
+#             Q(date_time=current_date) & (Q(issuer_code=bank_code) | Q(acquirer_code=bank_code))
+#         )
+        
+#         # Convert queryset to a DataFrame
+#         data = pd.DataFrame.from_records(queryset.values())
+
+#         # Create an in-memory Excel file
+#         excel_file = io.BytesIO()
+#         data.to_excel(excel_file, index=False)  # You can customize the file name and other options here
+
+#         # Create a response with the Excel file
+#         response = HttpResponse(
+#             excel_file.getvalue(),
+#             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+#         )
+        
+#         # Set the content-disposition header to prompt download
+#         response['Content-Disposition'] = 'attachment; filename="reconciled_data.xlsx"'
+
+#         return response
+    
 class UnReconciledDataView(APIView):
     """
     Retrieve unreconciled data.
@@ -217,29 +260,37 @@ class UnReconciledDataView(APIView):
             return Response(data, status=status.HTTP_200_OK)
         else:
             raise Http404("unReconciled data not found")  
+        
 
 # class UnReconciledDataView(APIView):
 #     """
-#     Retrieve reconciled data.
+#     Retrieve unreconciled data.
 #     """
 
 #     def get(self, request, *args, **kwargs):
-#         # You can directly use the reconciled_data from the main file
+#         global succunreconciled_data
+
 #         if succunreconciled_data is not None:
 #             unreconciled_data_cleaned = unserializable_floats(succunreconciled_data)
-#             data = unreconciled_data_cleaned.to_dict(orient='records')
-#             return Response(data, status=status.HTTP_200_OK)
+
+#             # Create a DataFrame from the cleaned data
+#             df = pd.DataFrame(unreconciled_data_cleaned)
+
+#             # Create an in-memory Excel file
+#             excel_file = io.BytesIO()
+#             df.to_excel(excel_file, index=False)  # Write the DataFrame to Excel
+
+#             # Set the file pointer to the beginning of the file
+#             excel_file.seek(0)
+
+#             # Create a response with the Excel file
+#             response = HttpResponse(excel_file.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+#             response['Content-Disposition'] = 'attachment; filename="unreconciled_data.xlsx"'
+
+#             return response
 #         else:
 #             raise Http404("Unreconciled data not found")
 
-# class ReconStatsView(generics.ListAPIView):
-#     serializer_class = LogSerializer
-#     def get_queryset(self):
-#         bank_code = get_bank_code_from_request(self.request)
-#         # print(res = ReconLog.objects.filter(bank_id=bank_code)
-#         result = recon_stats_req(server, database, username, password, bank_code)
-#         # return ReconLog.objects.filter(bank_id=bank_code)        
-#         return result  
 
 class ReconStatsView(generics.ListAPIView):
     serializer_class = LogSerializer
@@ -278,7 +329,7 @@ class sabsreconcile_csv_filesView(APIView):
                 unmatched_csv = unmatched_setlesabs.to_csv(index=False)
 
                 # Create a zip file in memory
-                memory_file = BytesIO()
+                memory_file = io.BytesIO()
                 with ZipFile(memory_file, 'w') as zf:
                     zf.writestr('matched_setle.csv', matched_csv)
                     zf.writestr('unmatched_setlesabs.csv', unmatched_csv)
@@ -321,7 +372,7 @@ class SettlementView(APIView):
                 settlement_csv = settlement_result.to_csv(index=False)
 
                 # Create a zip file in memory
-                memory_file = BytesIO()
+                memory_file = io.BytesIO()
                 with ZipFile(memory_file, 'w') as zf:
                     zf.writestr('settlement_result.csv', settlement_csv)
 
