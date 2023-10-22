@@ -1,18 +1,7 @@
 import os
-from dotenv import load_dotenv
 import logging
 from .utils import convert_batch_to_int,  add_payer_beneficiary, combine_transactions, pre_processing, pre_processing_amt, read_excel_file, select_setle_file, merge, select_setle_file
 import glob
-
-# Load the .env file
-load_dotenv()
-# Get the environment variables
-server = os.getenv('DB_SERVER')
-database = os.getenv('DB_NAME')
-username = os.getenv('DB_USERNAME')
-password = os.getenv('DB_PASSWORD')
-
-import logging
 
 def settle(batch):
     try:

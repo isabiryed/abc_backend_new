@@ -89,8 +89,8 @@ class Transactions(models.Model):
     abc_commission = models.DecimalField(db_column='ABC_COMMISSION', max_digits=18, decimal_places=2, blank=True, null=True)  # Field name made lowercase.
     response_code = models.CharField(db_column='RESPONSE_CODE', max_length=255, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)  # Field name made lowercase.
     transaction_status = models.CharField(db_column='TRANSACTION_STATUS', max_length=255, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    processing_code = models.CharField(db_column='PROCESSING_CODE', max_length=255, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)  # Field name made lowercase.
     Tel_num = models.CharField(db_column='TEL_NUMBER', max_length=255, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)  # Field name made lowercase.
-  
     
     class Meta:
         managed = False

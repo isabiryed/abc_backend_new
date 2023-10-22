@@ -4,7 +4,11 @@ import re
 import pandas as pd
 import datetime as dt
 from .models import ReconLog ,Recon, Transactions
-from django.db import transaction
+from django.db import transaction,IntegrityError
+from django.core.exceptions import ObjectDoesNotExist
+
+
+logging.basicConfig(level=logging.DEBUG)
 
 current_date = dt.date.today().strftime('%Y-%m-%d')
 
@@ -62,6 +66,27 @@ def use_cols(df):
 
     return df_selected
 
+def use_cols_succunr(df):
+    # List of columns to select
+    columns_to_select = ['DATE_TIME', 'Transaction type', 'AMOUNT', 'TRN_REF', '_merge', 'Recon Status']
+
+    # Create a new DataFrame with selected columns
+    new_df = df[columns_to_select]
+
+    # Rename the columns
+    new_df = new_df.rename(columns={
+        'DATE_TIME': 'DATE',
+        'Transaction type': 'TXN TYPE',
+        'AMOUNT': 'AMOUNT',
+        'TRN_REF': 'TRN_REF',
+        '_merge': 'MERGE',
+        'Recon Status': 'STATUS'
+    })
+    # Replace NaN values with "UNKWN" in the entire DataFrame
+    new_df = new_df.apply(lambda col: col.astype(str).fillna("UNKWN"))
+
+    return new_df
+
 def backup_refs(df, reference_column):
     df['Original_' + reference_column] = df[reference_column]
     return df
@@ -72,13 +97,20 @@ def date_range(column):
     return min_date, max_date
     
 def process_reconciliation(DF1: pd.DataFrame, DF2: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame):
-    
+
     # Rename columns of DF1 to match DF2 for easier merging
-    DF1 = DF1.rename(columns={'Date': 'DATE_TIME', 'ABC Reference': 'TRN_REF', 'Amount': 'AMOUNT', 'Transaction type': 'TXN_TYPE'})
+    DF1 = DF1.rename(columns={'Date': 'DATE_TIME', 'ABC Reference': 'TRN_REF', 'Amount': 'AMOUNT'})    
+
+    # Remove duplicates based on 'TRN_REF'
+    DF1 = DF1.drop_duplicates(subset='TRN_REF', keep='first')
+    DF2 = DF2.drop_duplicates(subset='TRN_REF', keep='first')
     
     # Merge the dataframes on the relevant columns
     merged_df = DF1.merge(DF2, on=['DATE_TIME', 'TRN_REF', 'AMOUNT'], how='outer', indicator=True)
     
+    # Replace '_merge' values
+    merged_df['_merge'] = merged_df['_merge'].replace('left_only', 'Bank_only').replace('right_only', 'ABC_only')
+        
     # Create a new column 'Recon Status' with initial value 'Unreconciled'
     merged_df['Recon Status'] = 'Unreconciled'
     
@@ -91,7 +123,7 @@ def process_reconciliation(DF1: pd.DataFrame, DF2: pd.DataFrame) -> (pd.DataFram
     reconciled_data = merged_df[merged_df['Recon Status'] == 'Reconciled']
     succunreconciled_data = merged_df[merged_df['Recon Status'] == 'succunreconciled']
     unreconciled_data = merged_df[merged_df['Recon Status'] == 'Unreconciled']
-    exceptions = merged_df[(merged_df['Recon Status'] == 'Reconciled') & (merged_df['RESPONSE_CODE'] != '0')]
+    exceptions = merged_df[(merged_df['Recon Status'] == 'Reconciled') & (merged_df['RESPONSE_CODE'] != '0')]    
 
     return merged_df, reconciled_data, succunreconciled_data, exceptions
 
@@ -103,67 +135,76 @@ def update_reconciliation(df, bank_code):
     update_count = 0
     insert_count = 0
 
+    # Extract all unique ABC REFERENCE values from your DataFrame
+    unique_refs = df['ABC REFERENCE'].unique()
+
+    # Fetch existing trn_ref values from the database based on ABC REFERENCE
+    existing_refs = Recon.objects.filter(trn_ref__in=unique_refs).values_list('trn_ref', flat=True)
+
+    # Create a set for faster membership testing
+    existing_refs_set = set(existing_refs)
+
     with transaction.atomic():
         for index, row in df.iterrows():
             date_time = row['DATE_TIME']
             batch = row['BATCH']
-            trn_ref = row['ABC REFERENCE']
+            abc_ref = row['ABC REFERENCE']
             issuer_code = row['ISSUER_CODE']
             acquirer_code = row['ACQUIRER_CODE']
-            response_code = row['RESPONSE_CODE']  # Add this line to get RESPONSE_CODE
+            response_code = row['RESPONSE_CODE']
 
-            if pd.isnull(trn_ref):
+            if pd.isnull(abc_ref):
                 logging.warning(f"No References to run Update {index}.")
                 continue
 
-            # Try to retrieve an existing record based on TRN_REF
-            try:
-                recon_obj = Recon.objects.get(trn_ref=trn_ref)
+            # Check if the ABC REFERENCE exists in the database
+            if abc_ref in existing_refs_set:
+                try:
+                    # Try to retrieve the record with the same abc_ref from the database
+                    existing_record = Recon.objects.get(trn_ref=abc_ref)
+                     
+                    # Update recon_obj fields conditionally
+                    if response_code != '0':
+                        if existing_record.excep_flag == 'N':
+                            existing_record.excep_flag = 'Y'
 
-                # Update recon_obj fields conditionally
-                if recon_obj.iss_flg is None or recon_obj.iss_flg == 0 or recon_obj.iss_flg != 1:
-                    if recon_obj.issuer_code == bank_code:
-                        recon_obj.iss_flg = 1
-                        recon_obj.iss_flg_date = current_date
+                    if existing_record.iss_flg is None or existing_record.iss_flg == 0 or existing_record.iss_flg != 1:
+                        if existing_record.issuer_code == bank_code:
+                            existing_record.iss_flg = 1
+                            existing_record.iss_flg_date = current_date
 
-                if recon_obj.acq_flg is None or recon_obj.acq_flg == 0 or recon_obj.acq_flg != 1:
-                    if recon_obj.acquirer_code == bank_code:
-                        recon_obj.acq_flg = 1
-                        recon_obj.acq_flg_date = current_date
+                    if existing_record.acq_flg is None or existing_record.acq_flg == 0 or existing_record.acq_flg != 1:
+                        if existing_record.acquirer_code == bank_code:
+                            existing_record.acq_flg = 1
+                            existing_record.acq_flg_date = current_date
 
-                if recon_obj.excep_flag is None or recon_obj.excep_flag == 'N' or recon_obj.excep_flag != 'Y':
-                    if response_code != 0:
-                        recon_obj.excep_flag = 'Y'
+                    existing_record.save()
+                    update_count += 1
 
-                recon_obj.save()
-                update_count += 1
-
-            # If the record doesn't exist, create a new one
-            except Recon.DoesNotExist:
-                recon_obj = Recon(
-                    date_time=current_date,
-                    tran_date=date_time,
-                    batch=batch,
-                    trn_ref=trn_ref,
-                    issuer_code=issuer_code,
-                    acquirer_code=acquirer_code                    
-                )
-
-                # Set / Update fields based on your logic
-                
-                if recon_obj.issuer_code == bank_code:
-                    recon_obj.iss_flg = 1
-                    recon_obj.iss_flg_date = current_date
-
-                if recon_obj.acquirer_code == bank_code:
-                    recon_obj.acq_flg = 1
-                    recon_obj.acq_flg_date = current_date
-
-                if response_code != 0:
-                    recon_obj.excep_flag = 'Y'
-
-                recon_obj.save()
-                insert_count += 1
+                except Recon.DoesNotExist:
+                    # Handle the case where the record no longer exists
+                    pass
+            else:
+                # If the ABC REFERENCE doesn't exist, insert a new record
+                try:
+                    Recon.objects.create(
+                        date_time=current_date,
+                        tran_date=date_time,
+                        batch=batch,
+                        trn_ref=abc_ref, 
+                        issuer_code=issuer_code,
+                        acquirer_code=acquirer_code,
+                        iss_flg=1 if issuer_code == bank_code else 0,
+                        iss_flg_date=current_date if issuer_code == bank_code else None,
+                        acq_flg=1 if acquirer_code == bank_code else 0,
+                        acq_flg_date=current_date if acquirer_code == bank_code else None,
+                        excep_flag='Y' if response_code != '0' else 'N'
+                    )
+                    insert_count += 1
+                except IntegrityError:
+                    # Another thread/process inserted a record with the same abc_ref simultaneously
+                    logging.warning(f"IntegrityError encountered for ABC REFERENCE: {abc_ref}. Skipping insertion.")
+                    pass
 
     feedback = f"Updated: {update_count}, Inserted: {insert_count}"
     logging.info(feedback)

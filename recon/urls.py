@@ -1,4 +1,4 @@
-from .views import ExceptionsView, ReconStatsView, ReconcileView, ReconciledDataView, ReversalsView, SettlementView, UnReconciledDataView, UploadedFilesViewset, sabsreconcile_csv_filesView
+from .views import ExceptionsView, ReconStatsView, ReconcileView, ReversalsView, SettlementView, UploadedFilesViewset, sabsreconcile_csv_filesView
 from rest_framework.routers import DefaultRouter
 from django.urls import path,include
 
@@ -11,8 +11,6 @@ urlpatterns = [
     path('reconstats/', ReconStatsView.as_view(), name='reconstats'),
     path('reversals/', ReversalsView.as_view(), name='reversals'),  # Add this line
     path('exceptions/', ExceptionsView.as_view(), name='exceptions'),
-    path('reconcileddata/', ReconciledDataView.as_view(), name='reconcileddata'),
-    path('unreconcileddata/', UnReconciledDataView.as_view(), name='unreconcileddata'),
     path('settlementcsv_files/', SettlementView.as_view(), name='settlement-csv-files'),
     path('sabsreconcile_csv_file/', sabsreconcile_csv_filesView.as_view(), name='ssabsreconcile_csv_file'),
 
