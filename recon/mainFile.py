@@ -70,7 +70,7 @@ def reconcileMain(path, bank_code, user):
                     feedback = update_reconciliation(reconciled_data, bank_code)
                     try:
                         insert_recon_stats(
-                            bank_code, len(reconciled_data), len(succunreconciled_data), len(exceptions), feedback,
+                            bank_code,user, len(reconciled_data), len(succunreconciled_data), len(exceptions), feedback,
                             requestedRows, UploadedRows, date_range_str
                         )                        
                         # Log or handle success
@@ -87,7 +87,7 @@ def reconcileMain(path, bank_code, user):
         except Exception as e:
             # Handle the exception (e.g., log the error or take appropriate action)
             logging.error(f"Error: {str(e)}")
-            feedback = "Oops! ABC doesn't seem to have your records. Check your date range."
+            feedback = "No records. Check your date range."
     except Exception as e:
         logging.error(f"An error occurred: {str(e)}")
         return None, None, None, None, None, None, None, None

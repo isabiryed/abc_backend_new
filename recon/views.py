@@ -1,5 +1,6 @@
 import io
 import json
+import logging
 import os
 import datetime as dt
 from zipfile import ZipFile
@@ -28,6 +29,15 @@ from .serializers import (
 
 current_date = dt.date.today().strftime('%Y-%m-%d')
 
+class CustomReconciliationError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+class CustomFileIOError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
 # Create your views here.
 
 def get_swift_code_from_request(request):
@@ -45,6 +55,12 @@ def get_bank_code_from_request(request):
     bank_code = bank.bank_code    
     
     return bank_code
+
+def get_username_from_request(request):
+    user = request.user
+    username = user.username
+    return username
+
 
 class UploadedFilesViewset(viewsets.ModelViewSet):
     queryset = UploadedFile.objects.all()
@@ -82,40 +98,48 @@ class ReconcileView(APIView):
         user = request.user
         if serializer.is_valid():
             uploaded_file = serializer.validated_data['file']
-            bank_code = get_bank_code_from_request(request)            
+            bank_code = get_bank_code_from_request(request)
 
             # Save the uploaded file temporarily
             temp_file_path = "temp_file.xlsx"
-            with open(temp_file_path, "wb") as buffer:
-                buffer.write(uploaded_file.read())
-
             try:
-                # Call the main function with the path of the saved file and the swift code
-                merged_df,reconciled_data, succunreconciled_data, exceptions, feedback, requestedRows, UploadedRows, date_range_str =  reconcileMain( temp_file_path, bank_code,user)
-                 
-                # Perform clean up: remove the temporary file after processing
-                os.remove(temp_file_path)
-                
-                data = {
-                    "reconciledRows": len(reconciled_data),
-                    "unreconciledRows": len(succunreconciled_data),
-                    "exceptionsRows": len(exceptions),
-                    "feedback": feedback,
-                    "RequestedRows": requestedRows,
-                    "UploadedRows": UploadedRows,
-                    "min_max_DateRange": date_range_str,
-                    "reconciled_data": reconciled_data.to_dict(orient='records') if isinstance(reconciled_data, pd.DataFrame) else reconciled_data,
-                    "succunreconciled_data": succunreconciled_data.to_dict(orient='records') if isinstance(succunreconciled_data, pd.DataFrame) else succunreconciled_data                
-                                    }                              
-                return Response(data, status=status.HTTP_200_OK)
-            
-            except Exception as e:
-                # If there's an error during the process, ensure the temp file is removed
-                if os.path.exists(temp_file_path):
+                with open(temp_file_path, "wb") as buffer:
+                    buffer.write(uploaded_file.read())
+
+                try:
+                    # Call the main function with the path of the saved file and the swift code
+                    merged_df, reconciled_data, succunreconciled_data, exceptions, feedback, requestedRows, UploadedRows, date_range_str = reconcileMain(
+                        temp_file_path, bank_code, user)
+
+                    # Perform clean up: remove the temporary file after processing
                     os.remove(temp_file_path)
-                
-                # Return error as response
-                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+                    data = {
+                        "reconciledRows": len(reconciled_data),
+                        "unreconciledRows": len(succunreconciled_data),
+                        "exceptionsRows": len(exceptions),
+                        "feedback": feedback,
+                        "RequestedRows": requestedRows,
+                        "UploadedRows": UploadedRows,
+                        "min_max_DateRange": date_range_str,
+                        "reconciled_data": reconciled_data.to_dict(orient='records') if isinstance(reconciled_data, pd.DataFrame) else reconciled_data,
+                        "succunreconciled_data": succunreconciled_data.to_dict(orient='records') if isinstance(succunreconciled_data, pd.DataFrame) else succunreconciled_data
+                    }
+                    return Response(data, status=status.HTTP_200_OK)
+
+                except Exception as e:
+                    # If there's an error during the process, ensure the temp file is removed
+                    if os.path.exists(temp_file_path):
+                        os.remove(temp_file_path)
+
+                    # Handle the specific exceptions and raise custom exceptions with additional context
+                    logging.error(f"An error occurred during reconciliation: {str(e)}")
+                    raise CustomReconciliationError(f"Error during reconciliation: {str(e)}")
+
+            except IOError as ioe:
+                # Handle file I/O errors
+                logging.error(f"An error occurred while saving the uploaded file: {str(ioe)}")
+                raise CustomFileIOError(f"Error saving the uploaded file: {str(ioe)}")
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -127,10 +151,10 @@ class ReversalsView(generics.ListAPIView):
 
         queryset = Transactions.objects.filter(
             Q(request_type__in=['1420', '1421']) &
-            Q(txn_type__in=['BI', 'MINI']) & 
-            Q(processing_code__in=['320000', '340000', '510000', '370000', '180000','360000']) &
+            ~Q(txn_type__in=['BI', 'MINI']) & 
+            ~Q(processing_code__in=['320000', '340000', '510000', '370000', '180000','360000']) &
             (Q(issuer_code=bank_code) | Q(acquirer_code=bank_code)) &
-            Q(date_time=current_date) & ~Q(amount='0')
+            Q(date_time=current_date) #& ~Q(amount='0')
         ).annotate(
             Type=Case(
                 When(request_type='1420', then=Value('Reversal')),
@@ -154,7 +178,7 @@ class ReversalsView(generics.ListAPIView):
             'Type',
             'Status'
         ).distinct()
-
+        
         return queryset
 
 class ExceptionsView(generics.ListAPIView):
