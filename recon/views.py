@@ -148,15 +148,16 @@ class ReversalsView(generics.ListAPIView):
 
     def get_queryset(self):
         bank_code = get_bank_code_from_request(self.request)
+        print(bank_code)
 
         queryset = Transactions.objects.filter(
             Q(request_type__in=['1420', '1421']) &
             ~Q(txn_type__in=['BI', 'MINI']) & 
-            ~Q(processing_code__in=['320000', '340000', '510000', '370000', '180000','360000']) &
-            (Q(issuer_code=bank_code) | Q(acquirer_code=bank_code)) &
-            Q(date_time=current_date) #& ~Q(amount='0')
+            ~Q(processing_code__in=['320000', '340000', '510000', '370000', '180000','360000']) & ~Q(amount='0') & 
+            (Q(issuer_code=bank_code) | Q(acquirer_code=bank_code)) #& Q(response_code__in=['91','991','998'])
+            # & Q(date_time=current_date) #& ~Q(amount='0') 
         ).annotate(
-            Type=Case(
+            Reversal_type=Case(
                 When(request_type='1420', then=Value('Reversal')),
                 When(request_type='1421', then=Value('Repeat Reversal')),
                 default=Value(None),
@@ -170,12 +171,13 @@ class ReversalsView(generics.ListAPIView):
             )
         ).values(
             'date_time',
+            'txn_id',
             'trn_ref',
             'amount',
             'issuer',
             'acquirer',
             'txn_type',
-            'Type',
+            'Reversal_type',
             'Status'
         ).distinct()
         

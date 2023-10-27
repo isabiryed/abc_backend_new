@@ -42,6 +42,7 @@ class Recon(models.Model):
     tran_date = models.DateTimeField(db_column='TRAN_DATE',blank=True, null=True)  # Field name made lowercase.
     trn_ref = models.CharField(db_column='TRN_REF',max_length=255, blank=True, null=True,unique=True)  # Field name made lowercase.
     batch = models.CharField(db_column='BATCH',max_length=255, blank=True, null=True)  # Field name made lowercase.
+    amount = models.DecimalField(db_column='AMOUNT', max_digits=18, decimal_places=2, blank=True, null=True)
     acquirer_code = models.CharField(db_column='ACQUIRER_CODE',max_length=255, blank=True, null=True)  # Field name made lowercase.
     issuer_code = models.CharField(db_column='ISSUER_CODE',max_length=255, blank=True, null=True)  # Field name made lowercase.
     excep_flag = models.CharField(db_column='EXCEP_FLAG',max_length=6, blank=True, null=True)  # Field name made lowercase.

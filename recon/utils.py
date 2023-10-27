@@ -95,7 +95,7 @@ def use_cols(df):
         df['DATE_TIME'] = pd.to_datetime(df['DATE_TIME'].astype(str), format='%Y%m%d')
 
         # Select and retain only the desired columns
-        selected_columns = ['DATE_TIME', 'ABC REFERENCE', 'BATCH', 'ISSUER_CODE', 'ACQUIRER_CODE', 'RESPONSE_CODE',
+        selected_columns = ['DATE_TIME', 'ABC REFERENCE', 'BATCH','AMOUNT', 'ISSUER_CODE', 'ACQUIRER_CODE', 'RESPONSE_CODE',
                             'MERGE', 'STATUS']
         df_selected = df[selected_columns]
 
@@ -116,6 +116,8 @@ def use_cols_succunr(df):
 
         # Create a new DataFrame with selected columns
         new_df = df[columns_to_select]
+        # Replace NaN values with "UNKWN" in the entire DataFrame
+        new_df = new_df.apply(lambda col: col.astype(str).fillna("NULL"))
 
         # Rename the columns
         new_df = new_df.rename(columns={
@@ -127,8 +129,8 @@ def use_cols_succunr(df):
             'Recon Status': 'STATUS'
         })
 
-        # Replace NaN values with "UNKWN" in the entire DataFrame
-        new_df = new_df.apply(lambda col: col.astype(str).fillna("UNKWN"))
+        # # Replace NaN values with "UNKWN" in the entire DataFrame
+        # new_df = new_df.apply(lambda col: col.astype(str).fillna("NULL"))
 
         return new_df
     except CustomValueError as e:
@@ -211,6 +213,7 @@ def update_reconciliation(df, bank_code):
             for index, row in df.iterrows():
                 date_time = row['DATE_TIME']
                 batch = row['BATCH']
+                amount = row['AMOUNT']
                 abc_ref = row['ABC REFERENCE']
                 issuer_code = row['ISSUER_CODE']
                 acquirer_code = row['ACQUIRER_CODE']
@@ -254,6 +257,7 @@ def update_reconciliation(df, bank_code):
                             date_time=current_date,
                             tran_date=date_time,
                             batch=batch,
+                            amount=amount,
                             trn_ref=abc_ref,
                             issuer_code=issuer_code,
                             acquirer_code=acquirer_code,
