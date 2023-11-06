@@ -18,7 +18,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from recon.mainFile import reconcileMain
+from recon.index import reconcileMain
 from recon.setlement_ import setleSabs, settle
 from recon.utils import unserializable_floats
 from .models import Recon, ReconLog, UploadedFile, Bank, UserBankMapping, Transactions
