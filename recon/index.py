@@ -36,7 +36,7 @@ def reconcileMain(path, bank_code, user):
                 Q(issuer_code=bank_code) | Q(acquirer_code=bank_code),
                 date_time__date__range=(min_date, max_date),
                 request_type='1200',
-            ).exclude(Q(txn_type__in=['BI', 'MINI']) & ~Q(issuer_classification__in=['ON-US']) & ~Q(processing_code__in=['320000', '340000', '510000', '370000', '180000', '360000'])).values(
+            ).exclude(Q(txn_type__in=['BI', 'MINI']) & ~Q(processing_code__in=['320000', '340000', '510000', '370000', '180000', '360000'])).values(
                 'date_time', 'batch', 'trn_ref', 'txn_type', 'issuer_code', 'acquirer_code', 'amount', 'response_code',
             ).distinct()
 
