@@ -4,7 +4,7 @@ import os
 import logging
 
 from .models import Transactions
-from .utils import  backup_refs, date_range, pre_processing, process_reconciliation,insert_recon_stats, update_reconciliation, use_cols, use_cols_succunr
+from .utils import  backup_refs, date_range, pre_processing, process_reconciliation,insert_recon_stats, remove_duplicates, update_reconciliation, use_cols, use_cols_succunr
  
 
 def reconcileMain(path, bank_code, user):
@@ -17,14 +17,15 @@ def reconcileMain(path, bank_code, user):
             return None, None, None, None, "Your uploaded file is empty", None, None, None 
         
         # Apply the date_range method to 'uploaded_df' and update it
-        min_date, max_date = date_range(uploaded_df.iloc[:, 0])
+        unique_uploaded_df = uploaded_df.drop_duplicates(subset=uploaded_df.columns[3], keep='first')
+        min_date, max_date = date_range(unique_uploaded_df.iloc[:, 0])
         date_range_str = f"{min_date},{max_date}"
 
         # Create a copy of the 4th column (index 3) and store it as a new column
         uploaded_df = backup_refs(uploaded_df, uploaded_df.columns[3])
 
         # Add a new column 'Response_code' with success_code
-        uploaded_df['Response_code'] = '0'
+        uploaded_df['Response_code'] = '00'
         UploadedRows = len(uploaded_df)
 
         # Clean and format columns in the uploaded dataset
@@ -36,7 +37,7 @@ def reconcileMain(path, bank_code, user):
                 Q(issuer_code=bank_code) | Q(acquirer_code=bank_code),
                 date_time__date__range=(min_date, max_date),
                 request_type='1200',
-            ).exclude(Q(txn_type__in=['BI', 'MINI']) & ~Q(processing_code__in=['320000', '340000', '510000', '370000', '180000', '360000'])).values(
+            ).exclude(Q(txn_type__in=['BI', 'MINI']) & ~Q(amount='0') & ~Q(processing_code__in=['320000', '340000', '510000', '370000', '180000', '360000'])).values(
                 'date_time', 'batch', 'trn_ref', 'txn_type', 'issuer_code', 'acquirer_code', 'amount', 'response_code',
             ).distinct()
 
@@ -48,10 +49,11 @@ def reconcileMain(path, bank_code, user):
 
             dbextract = dbextract.rename(columns=new_column_names)
             
-            if not dbextract.empty:
-                datadump = backup_refs(dbextract, 'TRN_REF')
-                requestedRows = len(datadump[datadump['RESPONSE_CODE'] == '0'])
-                
+            if not dbextract.empty:                
+                unique_dbextract = remove_duplicates(dbextract, 'TRN_REF')
+                datadump = backup_refs(unique_dbextract, 'TRN_REF')
+                requestedRows = len(datadump[datadump['RESPONSE_CODE'] == '00'])                
+
                 # Clean and format columns in the datadump
                 db_preprocessed = pre_processing(datadump)
 

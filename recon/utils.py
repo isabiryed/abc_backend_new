@@ -176,15 +176,15 @@ def process_reconciliation(DF1: pd.DataFrame, DF2: pd.DataFrame) -> (pd.DataFram
         merged_df['Recon Status'] = 'Unreconciled'
 
         # Update 'Recon Status' based on conditions
-        reconciled_condition = (merged_df['Recon Status'] == 'Unreconciled') & ((merged_df['RESPONSE_CODE'] == '0') | (merged_df['Response_code'] == '0'))
+        reconciled_condition = (merged_df['Recon Status'] == 'Unreconciled') & ((merged_df['RESPONSE_CODE'] == '00') | (merged_df['Response_code'] == '00'))
         merged_df.loc[reconciled_condition, 'Recon Status'] = 'succunreconciled'
         merged_df.loc[merged_df['_merge'] == 'both', 'Recon Status'] = 'Reconciled'
 
         # Separate the data into different dataframes based on the reconciliation status
         reconciled_data = merged_df[merged_df['Recon Status'] == 'Reconciled']
-        succunreconciled_data = merged_df[merged_df['Recon Status'] == 'succunreconciled']
+        succunreconciled_data = merged_df[(merged_df['Recon Status'] == 'succunreconciled') & (merged_df['RESPONSE_CODE'] != '00')]
         unreconciled_data = merged_df[merged_df['Recon Status'] == 'Unreconciled']
-        exceptions = merged_df[(merged_df['Recon Status'] == 'Reconciled') & (merged_df['RESPONSE_CODE'] != '0')]
+        exceptions = merged_df[(merged_df['Recon Status'] == 'Reconciled') & (merged_df['RESPONSE_CODE'] != '00')]
 
         return merged_df, reconciled_data, succunreconciled_data, exceptions
     except Exception as e:
@@ -199,6 +199,7 @@ def update_reconciliation(df, bank_code):
 
         update_count = 0
         insert_count = 0
+        current_datetime = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         # Extract all unique ABC REFERENCE values from your DataFrame
         unique_refs = df['ABC REFERENCE'].unique()
@@ -230,19 +231,19 @@ def update_reconciliation(df, bank_code):
                         existing_record = Recon.objects.get(trn_ref=abc_ref)
 
                         # Update recon_obj fields conditionally
-                        if response_code != '0':
+                        if response_code != '00':
                             if existing_record.excep_flag == 'N':
                                 existing_record.excep_flag = 'Y'
 
                         if existing_record.iss_flg is None or existing_record.iss_flg == 0 or existing_record.iss_flg != 1:
                             if existing_record.issuer_code == bank_code:
                                 existing_record.iss_flg = 1
-                                existing_record.iss_flg_date = current_date
+                                existing_record.iss_flg_date = current_datetime
 
                         if existing_record.acq_flg is None or existing_record.acq_flg == 0 or existing_record.acq_flg != 1:
                             if existing_record.acquirer_code == bank_code:
                                 existing_record.acq_flg = 1
-                                existing_record.acq_flg_date = current_date
+                                existing_record.acq_flg_date = current_datetime
 
                         existing_record.save()
                         update_count += 1
@@ -254,7 +255,7 @@ def update_reconciliation(df, bank_code):
                     # If the ABC REFERENCE doesn't exist, insert a new record
                     try:
                         Recon.objects.create(
-                            date_time=current_date,
+                            date_time=current_datetime,
                             tran_date=date_time,
                             batch=batch,
                             amount=amount,
@@ -262,10 +263,10 @@ def update_reconciliation(df, bank_code):
                             issuer_code=issuer_code,
                             acquirer_code=acquirer_code,
                             iss_flg=1 if issuer_code == bank_code else 0,
-                            iss_flg_date=current_date if issuer_code == bank_code else None,
+                            iss_flg_date=current_datetime if issuer_code == bank_code else None,
                             acq_flg=1 if acquirer_code == bank_code else 0,
-                            acq_flg_date=current_date if acquirer_code == bank_code else None,
-                            excep_flag='Y' if response_code != '0' else 'N'
+                            acq_flg_date=current_datetime if acquirer_code == bank_code else None,
+                            excep_flag='Y' if response_code != '00' else 'N'
                         )
                         insert_count += 1
                     except IntegrityError:
@@ -285,8 +286,9 @@ def insert_recon_stats(bank_id,User, reconciled_rows, unreconciled_rows, excepti
                         requested_rows, uploaded_rows, date_range_str):
     try:
         # Create a new ReconLog instance and save it to the database
+        current_datetime = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         recon_log = ReconLog(
-            date_time=current_date,
+            date_time=current_datetime,
             bank_id=bank_id,
             user_id=User,
             rq_date_range=date_range_str,
@@ -394,7 +396,7 @@ def select_setle_file(batch):
     try:
         # Query the Transactions table using Django's database API
         datafile = Transactions.objects.filter(
-            RESPONSE_CODE='0',
+            RESPONSE_CODE='00',
             BATCH=batch,
             ISSUER_CODE__exact='730147',  # Assuming this is the issuer code to exclude
             TXN_TYPE__in=['ACI', 'AGENTFLOATINQ']
@@ -466,6 +468,24 @@ def merge(DF1: pd.DataFrame, DF2: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame, 
         # Handle exceptions and raise CustomDatabaseError with additional context
         logging.error(f"An error occurred while merging data: {str(e)}")
         raise CustomDatabaseError(f"Error merging data: {str(e)}")
+
+
+def remove_duplicates(df, column_name):
+    """
+    Remove duplicate rows from a DataFrame based on a specific column.
+
+    Parameters:
+    df (pandas.DataFrame): The DataFrame from which to remove duplicates.
+    column_name (str): The name of the column to check for duplicates.
+
+    Returns:
+    pandas.DataFrame: A DataFrame with duplicates removed.
+    """
+    # Keep the first occurrence of each value in column_name, discard the rest.
+    df_unique = df.drop_duplicates(subset=column_name, keep='first')
+    return df_unique
+
+
 
     
 
