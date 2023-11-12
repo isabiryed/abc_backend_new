@@ -154,8 +154,8 @@ class ReversalsView(generics.ListAPIView):
             Q(request_type__in=['1420', '1421']) &
             ~Q(txn_type__in=['BI', 'MINI']) & 
             ~Q(processing_code__in=['320000', '340000', '510000', '370000', '180000','360000']) & ~Q(amount='0') & 
-            (Q(issuer_code=bank_code) | Q(acquirer_code=bank_code)) #& Q(response_code__in=['91','991','998'])
-            # & Q(date_time=current_date) #& ~Q(amount='0') 
+            (Q(issuer_code=bank_code) | Q(acquirer_code=bank_code)) & Q(response_code__in=['91','991','998'])
+             & Q(date_time=current_date) 
         ).annotate(
             Reversal_type=Case(
                 When(request_type='1420', then=Value('Reversal')),
