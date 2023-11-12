@@ -147,8 +147,7 @@ class ReversalsView(generics.ListAPIView):
     serializer_class = TransactionSerializer
 
     def get_queryset(self):
-        bank_code = get_bank_code_from_request(self.request)
-        print(bank_code)
+        bank_code = get_bank_code_from_request(self.request)        
 
         queryset = Transactions.objects.filter(
             Q(request_type__in=['1420', '1421']) &
