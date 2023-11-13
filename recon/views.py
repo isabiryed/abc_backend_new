@@ -114,9 +114,9 @@ class ReconcileView(APIView):
                     os.remove(temp_file_path)
 
                     data = {
-                        "reconciledRows": len(reconciled_data),
-                        "unreconciledRows": len(succunreconciled_data),
-                        "exceptionsRows": len(exceptions),
+                        "reconciledRows": len(reconciled_data) if reconciled_data is not None else 0,
+                        "unreconciledRows": len(succunreconciled_data) if succunreconciled_data is not None else 0,
+                        "exceptionsRows": len(exceptions) if exceptions is not None else 0, 
                         "feedback": feedback,
                         "RequestedRows": requestedRows,
                         "UploadedRows": UploadedRows,
