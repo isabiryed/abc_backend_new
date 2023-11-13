@@ -28,6 +28,9 @@ from .serializers import (
 )
 
 current_date = dt.date.today().strftime('%Y-%m-%d')
+# Get the current date and time
+current_datetime = dt.datetime.now()
+current_day = current_datetime.replace(hour=23, minute=59, second=59, microsecond=999999)
 
 class CustomReconciliationError(Exception):
     def __init__(self, message):
@@ -152,7 +155,7 @@ class ReversalsView(generics.ListAPIView):
             Q(request_type__in=['1420', '1421']) &
             ~Q(txn_type__in=['BI', 'MINI']) & 
             ~Q(processing_code__in=['320000', '340000', '510000', '370000', '180000','360000']) & ~Q(amount='0') & 
-            (Q(issuer_code=bank_code) | Q(acquirer_code=bank_code)) & ~Q(response_code='00') & Q(date_time=current_date) 
+            (Q(issuer_code=bank_code) | Q(acquirer_code=bank_code)) & ~Q(response_code='00') & Q(date_time=current_day) 
         ).annotate(
             Reversal_type=Case(
                 When(request_type='1420', then=Value('Reversal')),
